@@ -1,6 +1,8 @@
 import discord
 from discord.ui import View, Button
 
+from views.dinosaurs import DinosaurSelectView
+
 
 class MainMenuView(View):
     def __init__(self):
@@ -57,7 +59,11 @@ class MainMenuView(View):
         custom_id = interaction.data["custom_id"]
 
         if custom_id == "dinosaurs":
-            await interaction.response.send_message("Список ваших динозавров...", ephemeral=True)
+            # TODO: Заменить на процесс получения динозавров пользователя
+            example_dinosaurs = ["Тираннозавр", "Трицератопс", "Велоцираптор", "Стегозавр"]
+
+            view = DinosaurSelectView(interaction.message.embeds[0], self, example_dinosaurs)
+            await interaction.response.edit_message(embed=view.embed, view=view)
 
         elif custom_id == "save_dino":
             await interaction.response.send_message("Динозавр сохранён!", ephemeral=True)
