@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 import discord
 from discord import Embed
@@ -13,7 +13,6 @@ class DinosaurSelectView(View):
         self.selected_dino = None
         self.dinosaurs = dinosaurs
 
-        # Инициализация Select с placeholder
         self.select_menu = self.create_select_menu()
         self.add_item(self.select_menu)
 
@@ -92,7 +91,6 @@ class DinosaurSelectView(View):
         """Обновляет состояние кнопок, embed и Select"""
         self.activate_button.disabled = self.selected_dino is None
 
-        # Удаляем старый Select и добавляем новый с обновленным placeholder
         self.remove_item(self.select_menu)
         self.select_menu = self.create_select_menu()
         self.add_item(self.select_menu)
@@ -118,12 +116,128 @@ class DinosaurSelectView(View):
             if self.selected_dino:
                 # TODO: Активировать динозавра
                 await interaction.response.edit_message(embed=None, view=None,
-                    content=f"Динозавр {self.selected_dino} успешно активирован!",
-                )
+                                                        content=f"Динозавр {self.selected_dino} успешно активирован!",
+                                                        )
 
             else:
                 await interaction.response.send_message(
                     "Сначала выберите динозавра!",
+                    ephemeral=True
+                )
+
+        return False
+
+
+class DinosaurDeleteSelectView(View):
+    def __init__(self, original_embed: Embed, original_view: View, dinosaurs: List[str]):
+        super().__init__(timeout=180)
+        self.original_view = original_view
+        self.original_embed = original_embed
+        self.selected_dino: Optional[str] = None
+        self.dinosaurs = dinosaurs
+
+        self.select_menu = self.create_select_menu()
+        self.add_item(self.select_menu)
+
+        self.delete_button = Button(
+            label="Удалить",
+            style=discord.ButtonStyle.danger,
+            custom_id="delete_dino",
+            disabled=True,
+            row=1
+        )
+        self.add_item(self.delete_button)
+
+        self.add_item(Button(
+            label="Вернуться",
+            style=discord.ButtonStyle.red,
+            custom_id="go_back",
+            row=2
+        ))
+
+        self.add_item(Button(
+            label="Закрыть",
+            style=discord.ButtonStyle.grey,
+            custom_id="close",
+            row=2
+        ))
+
+    def create_select_menu(self) -> Select:
+        placeholder = (
+            f"Вы выбрали: {self.selected_dino}"
+            if self.selected_dino
+            else "Выберите динозавра для удаления"
+        )
+        return Select(
+            placeholder=placeholder,
+            options=[discord.SelectOption(label=dino) for dino in self.dinosaurs],
+            custom_id="select_dino_delete"
+        )
+
+    @property
+    def embed(self) -> Embed:
+        embed = discord.Embed(
+            title="🦖 Удаление сохраненного динозавра",
+            description="*Перед удалением динозавра, убедитесь, что выбрали правильного!*",
+            color=discord.Color.red()
+        )
+
+        rules = (
+            "⚠️ **Внимание:**\n"
+            "• После удаления динозавра восстановить его будет невозможно.\n"
+            "• Проверьте, что вы выбрали нужного динозавра.\n"
+            "• Это действие нельзя отменить."
+        )
+
+        embed.add_field(
+            name="Правила удаления",
+            value=rules,
+            inline=False
+        )
+
+        embed.set_footer(
+            text="Удаляйте динозавров с осторожностью",
+            icon_url="https://emojicdn.elk.sh/⚠️"
+        )
+
+        embed.set_thumbnail(url="https://emojicdn.elk.sh/🦖")
+
+        return embed
+
+    async def update_view(self, interaction: discord.Interaction):
+        self.delete_button.disabled = self.selected_dino is None
+
+        self.remove_item(self.select_menu)
+        self.select_menu = self.create_select_menu()
+        self.add_item(self.select_menu)
+
+        await interaction.response.edit_message(embed=self.embed, view=self)
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        custom_id = interaction.data.get("custom_id")
+
+        if custom_id == "go_back":
+            await interaction.response.edit_message(embed=self.original_embed, view=self.original_view)
+
+        elif custom_id == "close":
+            await interaction.response.defer()
+            await interaction.delete_original_response()
+
+        elif custom_id == "select_dino_delete":
+            self.selected_dino = interaction.data["values"][0]
+            await self.update_view(interaction)
+
+        elif custom_id == "delete_dino":
+            if self.selected_dino:
+                # TODO: Реализовать удаление динозавра из сохраненных
+                await interaction.response.edit_message(
+                    embed=None,
+                    view=None,
+                    content=f"Динозавр {self.selected_dino} успешно удалён из сохранённых!"
+                )
+            else:
+                await interaction.response.send_message(
+                    "Сначала выберите динозавра для удаления!",
                     ephemeral=True
                 )
 
