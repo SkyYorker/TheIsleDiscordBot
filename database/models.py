@@ -1,0 +1,48 @@
+from datetime import datetime, UTC
+
+from sqlalchemy import (
+    DateTime,
+    Text,
+    Integer,
+    ForeignKey,
+    Index,
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class Players(Base):
+    __tablename__ = "players"
+
+    discord_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    steam_id: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    tk: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    registry_date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.now(UTC), nullable=False
+    )
+
+    dinos: Mapped[list["DinoStorage"]] = relationship(
+        "DinoStorage", back_populates="player", cascade="all, delete-orphan"
+    )
+
+
+class DinoStorage(Base):
+    __tablename__ = "dino_storage"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    dino_class: Mapped[str] = mapped_column(Text, nullable=False)
+    growth: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    hunger: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    thirst: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    discord_id: Mapped[int] = mapped_column(
+        ForeignKey("players.discord_id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    player: Mapped["Players"] = relationship("Players", back_populates="dinos")
+
+    __table_args__ = (
+        Index("ix_dino_storage_discord_id_dino_class", "discord_id", "dino_class", unique=True),
+    )

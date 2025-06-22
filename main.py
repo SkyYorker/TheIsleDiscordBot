@@ -1,8 +1,11 @@
+import asyncio
 import os
 
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+
+from database.crud import init_models
 
 load_dotenv()
 from views.auth_view import AuthView
@@ -18,4 +21,5 @@ async def on_ready():
 
 bot.load_extension("cogs.main_menu_cog")
 
+asyncio.run(init_models())
 bot.run(os.getenv("DISCORD_TOKEN"))
