@@ -30,6 +30,13 @@ class SteamAPI:
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(self.BASE_URL, params=params, timeout=10) as resp:
+                    if resp.status == 429:
+                        logger.error(f"Steam API rate limit exceeded (HTTP 429) for SteamID {steam_id}")
+                        return {"error": "rate_limited", "status": 429}
+                    if resp.status != 200:
+                        logger.error(f"Steam API returned status {resp.status} for SteamID {steam_id}")
+                        return {"error": f"bad_status_{resp.status}", "status": resp.status}
+                    # Только если статус 200, пытаемся декодировать JSON
                     data = await resp.json()
                     logger.debug(f"Received response for SteamID {steam_id}: {data}")
 
@@ -41,13 +48,13 @@ class SteamAPI:
                     return {}
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
             logger.error(f"Error fetching player info for SteamID {steam_id}: {str(e)}")
-            return {}
+            return {"error": "network_error", "details": str(e)}
 
     async def get_avatar_url(self, steam_id: str, size: str = "full") -> str:
         logger.debug(f"Requesting avatar for SteamID: {steam_id}, size: {size}")
         player = await self.get_player_info(steam_id)
 
-        if not player:
+        if not player or "error" in player:
             logger.warning(f"No player found for SteamID: {steam_id}, cannot get avatar")
             return ""
 
