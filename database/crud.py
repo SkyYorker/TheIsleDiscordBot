@@ -41,7 +41,7 @@ class PlayerDinoCRUD:
             session.add(player)
             await session.commit()
             await session.refresh(player)
-            return PlayerDinoCRUD._player_dict(player, full=True)
+            return PlayerDinoCRUD._player_dict(player)
 
     @staticmethod
     async def get_player_info(discord_id: int, full: bool = False) -> Optional[Dict[str, Any]]:
@@ -54,11 +54,11 @@ class PlayerDinoCRUD:
 
             dinos: List[DinoStorage] = (
                 await session.scalars(
-                    select(DinoStorage).where(DinoStorage.discord_id == discord_id)
+                    select(DinoStorage).where(DinoStorage.steam_id == player.steam_id)
                 )
             ).all()
 
-            player_dict = PlayerDinoCRUD._player_dict(player, full)
+            player_dict = PlayerDinoCRUD._player_dict(player)
             dinos_list = [PlayerDinoCRUD._dino_dict(d, full) for d in dinos]
 
             return {
@@ -67,7 +67,7 @@ class PlayerDinoCRUD:
             }
 
     @staticmethod
-    def _player_dict(player: Players, full: bool) -> Dict[str, Any]:
+    def _player_dict(player: Players) -> Dict[str, Any]:
         data = {
             "discord_id": player.discord_id,
             "steam_id": player.steam_id,
@@ -86,12 +86,12 @@ class PlayerDinoCRUD:
             "thirst": dino.thirst,
         }
         if full:
-            data["discord_id"] = dino.discord_id
+            data["steam_id"] = dino.steam_id
         return data
 
     @staticmethod
     async def add_dino(
-            discord_id: int,
+            steam_id: str,
             dino_class: str,
             growth: int = 0,
             hunger: int = 0,
@@ -99,18 +99,9 @@ class PlayerDinoCRUD:
     ) -> Optional[Dict[str, Any]]:
         async with async_session_maker() as session:
             player = await session.scalar(
-                select(Players).where(Players.discord_id == discord_id)
+                select(Players).where(Players.steam_id == steam_id)
             )
             if not player:
-                return None
-
-            existing = await session.scalar(
-                select(DinoStorage).where(
-                    DinoStorage.discord_id == discord_id,
-                    DinoStorage.dino_class == dino_class
-                )
-            )
-            if existing:
                 return None
 
             new_dino = DinoStorage(
@@ -118,7 +109,7 @@ class PlayerDinoCRUD:
                 growth=growth,
                 hunger=hunger,
                 thirst=thirst,
-                discord_id=discord_id
+                steam_id=steam_id
             )
             session.add(new_dino)
             await session.commit()
@@ -138,12 +129,12 @@ class PlayerDinoCRUD:
             return True
 
     @staticmethod
-    async def delete_dino(discord_id: int, dino_id: int) -> bool:
+    async def delete_dino(steam_id: str, dino_id: int) -> bool:
         async with async_session_maker() as session:
             dino = await session.scalar(
                 select(DinoStorage).where(
                     DinoStorage.id == dino_id,
-                    DinoStorage.discord_id == discord_id
+                    DinoStorage.steam_id == steam_id
                 )
             )
             if not dino:
