@@ -18,7 +18,7 @@ class Players(Base):
     __tablename__ = "players"
 
     discord_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    steam_id: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    steam_id: Mapped[str] = mapped_column(Text, unique=True)
     tk: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     registry_date: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.now(UTC), nullable=False
@@ -37,12 +37,8 @@ class DinoStorage(Base):
     growth: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     hunger: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     thirst: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    discord_id: Mapped[int] = mapped_column(
-        ForeignKey("players.discord_id", ondelete="CASCADE"), nullable=False, index=True
+    steam_id: Mapped[str] = mapped_column(
+        ForeignKey("players.steam_id", ondelete="CASCADE"), nullable=False, index=True
     )
 
     player: Mapped["Players"] = relationship("Players", back_populates="dinos")
-
-    __table_args__ = (
-        Index("ix_dino_storage_discord_id_dino_class", "discord_id", "dino_class", unique=True),
-    )
