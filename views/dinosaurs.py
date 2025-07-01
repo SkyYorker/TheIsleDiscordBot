@@ -3,6 +3,7 @@ from typing import List, Optional, Dict, Any
 import discord
 from discord import Embed
 from discord.ui import View, Select, Button
+from utils.scripts import restore_dino_script
 
 from data.dinosaurus import find_name_by_class, DINOSAURS, CATEGORY_EMOJIS
 from utils.scripts import del_dino
@@ -24,7 +25,7 @@ class DinosaurSelectView(View):
         self.selected_category: Optional[str] = None
         self.selected_dino: Optional[str] = None
         self.limited = False
-        self.state = "category"  # or "dino"
+        self.state = "category"
         self.dinos_in_cat: List[Dict[str, Any]] = []
 
         self.build_category_buttons()
@@ -32,7 +33,6 @@ class DinosaurSelectView(View):
     def build_category_buttons(self):
         self.clear_items()
         if not self.dinosaurs:
-            # Нет динозавров — только навигация
             self.state = "empty"
             self.add_item(Button(
                 label="Назад",
@@ -48,7 +48,6 @@ class DinosaurSelectView(View):
             ))
         else:
             self.state = "category"
-            # Считаем количество динозавров по категориям
             category_counts = {category: 0 for category in CATEGORY_EMOJIS.keys()}
             for d in self.dinosaurs:
                 category = DINOSAURS.get(find_name_by_class(d["dino_class"]), {}).get("category")
@@ -87,7 +86,6 @@ class DinosaurSelectView(View):
         self.dinos_in_cat = filter_dinos_by_category(self.dinosaurs, category)
         if not self.dinos_in_cat:
             self.state = "empty_category"
-            # Добавляем неактивную кнопку с подписью
             self.add_item(Button(
                 label="нет динозавров",
                 style=discord.ButtonStyle.grey,
@@ -218,6 +216,7 @@ class DinosaurSelectView(View):
         await interaction.response.edit_message(embed=self.embed, view=self)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        interaction.response: discord.InteractionResponse
         custom_id = interaction.data.get("custom_id")
         if custom_id.startswith("category_"):
             category = custom_id.replace("category_", "")
@@ -226,7 +225,6 @@ class DinosaurSelectView(View):
         elif custom_id == "go_main_menu":
             await interaction.response.edit_message(embed=self.original_embed, view=self.original_view)
         elif custom_id == "go_back":
-            # Возврат к выбору категории
             self.selected_category = None
             self.selected_dino = None
             self.build_category_buttons()
@@ -236,10 +234,35 @@ class DinosaurSelectView(View):
             await self.update_view(interaction)
         elif custom_id == "activate_dino":
             if self.selected_dino:
+                wait_embed = discord.Embed(
+                    title="⏳ Пожалуйста, подождите",
+                    description="Происходит активация выбранного динозавра...\nЭто может занять несколько секунд.",
+                    color=discord.Color.blurple()
+                )
                 await interaction.response.edit_message(
-                    embed=None,
+                    embed=wait_embed,
+                    view=None
+                )
+                result = await restore_dino_script(interaction.user.id, self.selected_dino)
+                if result is True:
+                    embed = discord.Embed(
+                        title="✅ Успешная активация",
+                        description=f"Динозавр `{self.selected_dino}` успешно активирован!",
+                        color=discord.Color.green()
+                    )
+                else:
+                    reason = result[1] if isinstance(result, tuple) and len(
+                        result) > 1 else "Не удалось активировать динозавра."
+                    embed = discord.Embed(
+                        title="❌ Ошибка активации",
+                        description=reason,
+                        color=discord.Color.red()
+                    )
+                await interaction.followup.edit_message(
+                    interaction.message.id,
+                    embed=embed,
                     view=None,
-                    content=f"Динозавр {self.selected_dino} успешно активирован!"
+                    content=None
                 )
             else:
                 await interaction.response.send_message(
