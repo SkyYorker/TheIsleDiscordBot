@@ -6,7 +6,7 @@ from utils.rcon_isle import PlayerData
 
 
 class KillDinoConfirmView(View):
-    def __init__(self, dino_data: dict, main_menu_embed: discord.Embed, main_menu_view: View, on_confirm_callback):
+    def __init__(self, dino_data: PlayerData, main_menu_embed: discord.Embed, main_menu_view: View, on_confirm_callback):
         super().__init__(timeout=60)
         self.dino_data = dino_data
         self.main_menu_embed = main_menu_embed
