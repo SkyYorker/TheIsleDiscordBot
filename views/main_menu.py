@@ -3,7 +3,7 @@ from discord.ui import View, Button
 
 from database.crud import PlayerDinoCRUD
 from utils.rcon_isle import PlayerData
-from utils.scripts import get_all_dinos, get_current_dino
+from utils.scripts import get_all_dinos, get_current_dino, kill_current_dino
 from views.dino_shop import DinoShopView
 from views.dinosaurs import DinosaurSelectView, DinosaurDeleteSelectView
 from views.kill_dino_confirm import KillDinoConfirmView, kill_dino_confirm_embed
@@ -122,16 +122,33 @@ class MainMenuView(View):
         embed.set_footer(text="🔗 Используйте кнопки ниже для управления профилем")
         return embed
 
-    async def kill_dino_confirm_callback(self, interaction, dino_data):
-        # Здесь должна быть логика убийства динозавра (например, через RCON или БД)
-        # После успешного убийства показываем результат
-        embed = discord.Embed(
-            title="💀 Текущий динозавр убит",
-            description="Ваш текущий динозавр был убит по вашему запросу.",
-            color=discord.Color.dark_red()
-        )
-        kill_view = KillDinoResultView(self.embed, self)
-        await interaction.response.edit_message(embed=embed, view=kill_view)
+    async def kill_dino_confirm_callback(self, interaction: discord.Interaction, dino_data: PlayerData):
+        await interaction.response.defer()
+
+        try:
+            result = await kill_current_dino(interaction.user.id)
+            if result is True:
+                embed = discord.Embed(
+                    title="💀 Текущий динозавр убит",
+                    description="Ваш текущий динозавр был убит по вашему запросу.",
+                    color=discord.Color.dark_red()
+                )
+            else:
+                # result = (None, error_message)
+                embed = discord.Embed(
+                    title="Ошибка",
+                    description=result[1] if isinstance(result, tuple) else "Не удалось убить динозавра.",
+                    color=discord.Color.orange()
+                )
+            kill_view = KillDinoResultView(self.embed, self)
+            await interaction.followup.edit_message(interaction.message.id, embed=embed, view=kill_view)
+        except Exception as e:
+            error_embed = discord.Embed(
+                title="Ошибка",
+                description=f"Произошла ошибка при обработке запроса: {str(e)}",
+                color=discord.Color.red()
+            )
+            await interaction.followup.send(embed=error_embed, ephemeral=True)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         custom_id = interaction.data["custom_id"]
@@ -164,13 +181,11 @@ class MainMenuView(View):
             await interaction.response.edit_message(embed=view.embed, view=view)
 
         elif custom_id == "kill_current_dino":
-            # TODO: Получать динозавра
             current_dino = await get_current_dino(interaction.user.id)
             if not current_dino or isinstance(current_dino, tuple):
                 embed = discord.Embed(
                     title="Ошибка",
-                    description=current_dino[1] if isinstance(current_dino,
-                                                              tuple) else "У вас нет активного динозавра.",
+                    description=current_dino[1] if isinstance(current_dino, tuple) else "У вас нет активного динозавра.",
                     color=discord.Color.orange()
                 )
                 error_view = discord.ui.View(timeout=60)
@@ -200,6 +215,15 @@ class MainMenuView(View):
 
                 error_view.interaction_check = error_interaction_check
                 await interaction.response.edit_message(embed=embed, view=error_view)
+            else:
+                confirm_embed = kill_dino_confirm_embed(current_dino)
+                confirm_view = KillDinoConfirmView(
+                    dino_data=current_dino,
+                    main_menu_embed=self.embed,
+                    main_menu_view=self,
+                    on_confirm_callback=self.kill_dino_confirm_callback
+                )
+                await interaction.response.edit_message(embed=confirm_embed, view=confirm_view)
 
         elif custom_id == "close":
             await interaction.response.defer()
