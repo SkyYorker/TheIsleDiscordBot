@@ -143,8 +143,9 @@ class DinosaurSelectView(View):
             growth = dino["growth"]
             hunger = dino["hunger"]
             thirst = dino["thirst"]
+            health = dino["health"]
             dino_name = find_name_by_class(dino["dino_class"])
-            label = f"({id}) {dino_name} (Рост {growth}, Голод: {hunger}, Жажда: {thirst})"
+            label = f"({id}) {dino_name} (Рост {growth}, Голод: {hunger}, Жажда: {thirst}, HP: {health})"
             options.append(discord.SelectOption(label=label, value=str(id)))
         self.limited = len(self.dinos_in_cat) > 25
         return Select(
@@ -305,8 +306,9 @@ class DinosaurDeleteSelectView(View):
             growth = dino["growth"]
             hunger = dino["hunger"]
             thirst = dino["thirst"]
+            health = dino["health"]
             dino_name = find_name_by_class(dino["dino_class"])
-            label = f"({id}) {dino_name} (Рост {growth}, Голод: {hunger}, Жажда: {thirst})"
+            label = f"({id}) {dino_name} (Рост {growth}, Голод: {hunger}, Жажда: {thirst}, HP: {health})"
             options.append(discord.SelectOption(label=label, value=str(id)))
         if len(self.dinosaurs) > 25:
             limited = True

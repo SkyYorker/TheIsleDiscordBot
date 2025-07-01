@@ -84,6 +84,7 @@ class PlayerDinoCRUD:
             "growth": dino.growth,
             "hunger": dino.hunger,
             "thirst": dino.thirst,
+            "health": dino.health,
         }
         if full:
             data["steam_id"] = dino.steam_id
@@ -95,7 +96,8 @@ class PlayerDinoCRUD:
             dino_class: str,
             growth: int = 0,
             hunger: int = 0,
-            thirst: int = 0
+            thirst: int = 0,
+            health: int = 0
     ) -> Optional[Dict[str, Any]]:
         async with async_session_maker() as session:
             player = await session.scalar(
@@ -109,6 +111,7 @@ class PlayerDinoCRUD:
                 growth=growth,
                 hunger=hunger,
                 thirst=thirst,
+                health=health,
                 steam_id=steam_id
             )
             session.add(new_dino)
@@ -142,3 +145,15 @@ class PlayerDinoCRUD:
             await session.delete(dino)
             await session.commit()
             return True
+
+    @staticmethod
+    async def get_dino_by_id(dino_id: int) -> DinoStorage | None:
+        async with async_session_maker() as session:
+            dino = await session.scalar(
+                select(DinoStorage).where(
+                    DinoStorage.id == dino_id
+                )
+            )
+            if not dino:
+                return None
+            return dino

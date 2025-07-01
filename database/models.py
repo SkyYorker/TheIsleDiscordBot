@@ -37,6 +37,7 @@ class DinoStorage(Base):
     growth: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     hunger: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     thirst: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    health: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     steam_id: Mapped[str] = mapped_column(
         ForeignKey("players.steam_id", ondelete="CASCADE"), nullable=False, index=True
     )

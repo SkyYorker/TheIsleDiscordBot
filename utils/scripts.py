@@ -27,7 +27,8 @@ async def save_dino(discord_id: int):
         isle_player.dino_class,
         int(isle_player.growth * 100),
         int(isle_player.hunger * 100),
-        int(isle_player.thirst * 100)
+        int(isle_player.thirst * 100),
+        int(isle_player.health * 100)
     )
     if not result:
         return None, "Техническая ошибка. Обратитесь к администратору"

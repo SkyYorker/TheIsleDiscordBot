@@ -99,6 +99,7 @@ class SaveDinoView(View):
             embed.add_field(name="Рост", value=f"{dino_data['growth']}%", inline=True)
             embed.add_field(name="Голод", value=f"{dino_data['hunger']}%", inline=True)
             embed.add_field(name="Жажда", value=f"{dino_data['thirst']}%", inline=True)
+            embed.add_field(name="HP", value=f"{dino_data['health']}%", inline=True)
             embed.set_thumbnail(url="https://emojicdn.elk.sh/🦖")
             embed.set_image(url=dino_image)
             embed.set_footer(text="Вы всегда можете сохранить нового динозавра!")
