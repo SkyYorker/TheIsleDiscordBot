@@ -1,8 +1,11 @@
-from typing import Dict, Optional, Any, List
+from datetime import datetime, UTC, timedelta
+from typing import List, Dict, Any, Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, delete
 
-from . import async_session_maker, engine
+from . import async_session_maker
+from . import engine
+from .models import PendingDinoStorage
 from .models import Players, DinoStorage, Base
 
 
@@ -157,3 +160,76 @@ class PlayerDinoCRUD:
             if not dino:
                 return None
             return dino
+
+
+class PendingDinoCRUD:
+    @staticmethod
+    async def add_pending_dino(
+            steam_id: str,
+            discord_id: int,
+            url: str
+    ) -> Dict[str, Any]:
+        async with async_session_maker() as session:
+            pending = PendingDinoStorage(
+                steam_id=steam_id,
+                discord_id=discord_id,
+                url=url
+            )
+            session.add(pending)
+            await session.commit()
+            await session.refresh(pending)
+            return PendingDinoCRUD._pending_dino_dict(pending)
+
+    @staticmethod
+    async def get_by_steam_id(steam_id: str) -> List[Dict[str, Any]]:
+        async with async_session_maker() as session:
+            result = await session.scalars(
+                select(PendingDinoStorage).where(PendingDinoStorage.steam_id == steam_id)
+            )
+            return [PendingDinoCRUD._pending_dino_dict(row) for row in result.all()]
+
+    @staticmethod
+    async def get_by_discord_id(discord_id: int) -> List[Dict[str, Any]]:
+        async with async_session_maker() as session:
+            result = await session.scalars(
+                select(PendingDinoStorage).where(PendingDinoStorage.discord_id == discord_id)
+            )
+            return [PendingDinoCRUD._pending_dino_dict(row) for row in result.all()]
+
+    @staticmethod
+    async def delete_by_steam_id(steam_id: str) -> int:
+        async with async_session_maker() as session:
+            result = await session.execute(
+                delete(PendingDinoStorage).where(PendingDinoStorage.steam_id == steam_id)
+            )
+            await session.commit()
+            return result.rowcount or 0
+
+    @staticmethod
+    async def delete_by_discord_id(discord_id: int) -> int:
+        async with async_session_maker() as session:
+            result = await session.execute(
+                delete(PendingDinoStorage).where(PendingDinoStorage.discord_id == discord_id)
+            )
+            await session.commit()
+            return result.rowcount or 0
+
+    @staticmethod
+    async def cleanup_old_entries(minutes: int = 5) -> int:
+        threshold = datetime.now(UTC) - timedelta(minutes=minutes)
+        async with async_session_maker() as session:
+            result = await session.execute(
+                delete(PendingDinoStorage).where(PendingDinoStorage.created_at < threshold)
+            )
+            await session.commit()
+            return result.rowcount or 0
+
+    @staticmethod
+    def _pending_dino_dict(obj: PendingDinoStorage) -> Dict[str, Any]:
+        return {
+            "id": obj.id,
+            "steam_id": obj.steam_id,
+            "discord_id": obj.discord_id,
+            "created_at": obj.created_at,
+            "url": obj.url,
+        }
