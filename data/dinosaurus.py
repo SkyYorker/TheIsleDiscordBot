@@ -6,7 +6,7 @@ DINOSAURS = {
         "weight": "9500 кг",
         "speed": "24,6 км/ч",
         "bite": "600 Ньютон",
-        "image": "https://www.theisle-game.com/templates/yootheme/cache/65/maiasaurus-1-65e8cf86.webp",
+        "image": "https://www.theisle-game.com/templates/yootheme/cache/1b/triceratops-the-isle-1bcea988.webp",
         "group_limit": "2 особи",
         "price": 270,
         "category": "Травоядные"
