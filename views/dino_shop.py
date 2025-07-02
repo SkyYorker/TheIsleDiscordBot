@@ -4,6 +4,7 @@ import discord
 from discord.ui import View, Select, Button
 
 from data.dinosaurus import DINOSAURS, CATEGORY_EMOJIS, find_name_by_class
+from utils.scripts import buy_dino
 
 
 def get_dinos_by_category(category: str) -> List[tuple[str, int]]:
@@ -183,7 +184,11 @@ class DinoShopView(View):
                 embed.add_field(name="Скорость бега", value=details["speed"], inline=False)
                 embed.add_field(name="Сила укуса", value=details["bite"], inline=False)
                 embed.set_image(url=details["image"])
-        embed.set_footer(text="💡 После выбора динозавра нажмите 'Купить'")
+        embed.set_footer(text="💡 Динозавр будет выращен до 99% чтобы вы успели выбрать вторую мутацию. \n"
+                              "Важно: перед "
+                              "тем как активировать рост, не забудьте выбрать первую мутацию, если вам это важно. "
+                              "После выбора первой мутации можно активировать рост и выбрать вторую, "
+                              "а после достижения 100% роста выбрать третью.")
         embed.set_thumbnail(url="https://emojicdn.elk.sh/🦖")
         return embed
 
@@ -212,12 +217,31 @@ class DinoShopView(View):
             await self.update_view(interaction)
         elif custom_id == "buy_dino":
             if self.selected_dino and self.selected_price is not None:
-                confirmation_view = DinoPurchaseConfirmationView(self, self.main_menu_embed, self.main_menu_view)
-                await interaction.response.edit_message(
-                    content=f"Вы купили динозавра **{self.selected_dino}** за **{self.selected_price} ТС**!",
-                    embed=dino_characteristics_embed(self.selected_dino),
-                    view=confirmation_view
+                current_dino = DINOSAURS[self.selected_dino]
+                result = await buy_dino(
+                    interaction.user.id,
+                    current_dino["class_name"],
+                    99, 100, 100, 100
                 )
+                if isinstance(result, tuple) and result[0] is None:
+                    reason = result[1] if len(result) > 1 else "Неизвестная ошибка"
+                    error_embed = discord.Embed(
+                        title="❌ Не удалось купить динозавра",
+                        description=reason,
+                        color=discord.Color.red()
+                    )
+                    await interaction.response.edit_message(
+                        content=None,
+                        embed=error_embed,
+                        view=self
+                    )
+                else:
+                    confirmation_view = DinoPurchaseConfirmationView(self, self.main_menu_embed, self.main_menu_view)
+                    await interaction.response.edit_message(
+                        content=f"Вы купили динозавра **{self.selected_dino}** за **{self.selected_price} ТС**!",
+                        embed=dino_characteristics_embed(self.selected_dino),
+                        view=confirmation_view
+                    )
             else:
                 await interaction.response.send_message(
                     "Сначала выберите динозавра!",
