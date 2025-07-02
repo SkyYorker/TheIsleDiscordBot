@@ -3,10 +3,9 @@ from typing import List, Optional, Dict, Any
 import discord
 from discord import Embed
 from discord.ui import View, Select, Button
-from utils.scripts import restore_dino_script
 
 from data.dinosaurus import find_name_by_class, DINOSAURS, CATEGORY_EMOJIS
-from utils.scripts import del_dino
+from utils.scripts import restore_dino_script, del_dino
 
 
 def filter_dinos_by_category(dinos: List[Dict[str, Any]], category: str) -> List[Dict[str, Any]]:
@@ -130,21 +129,24 @@ class DinosaurSelectView(View):
             ))
 
     def create_select_menu(self) -> Select:
-        placeholder = (
-            f"Вы выбрали: {self.selected_dino}"
-            if self.selected_dino
-            else f"Выберите динозавра ({self.selected_category})"
-        )
         options = []
-        for dino in self.dinos_in_cat[:25]:
+        saved_dino_class = ""
+        for dino in self.dinosaurs[:25]:
             id = dino["id"]
             growth = dino["growth"]
             hunger = dino["hunger"]
             thirst = dino["thirst"]
             health = dino["health"]
             dino_name = find_name_by_class(dino["dino_class"])
+            if str(id) == self.selected_dino:
+                saved_dino_class = dino_name
             label = f"({id}) {dino_name} (Рост {growth}, Голод: {hunger}, Жажда: {thirst}, HP: {health})"
             options.append(discord.SelectOption(label=label, value=str(id)))
+        placeholder = (
+            f"Вы выбрали: {saved_dino_class}"
+            if saved_dino_class
+            else "Выберите динозавра для активации"
+        )
         self.limited = len(self.dinos_in_cat) > 25
         return Select(
             placeholder=placeholder,
@@ -185,7 +187,9 @@ class DinosaurSelectView(View):
                 "4️⃣ **Нажмите кнопку активации.**\n"
                 "5️⃣ **После активации:**\n"
                 "       • В течение 2 минут запрещено нападать на других игроков.\n"
-                "       • Рост, голод, жажда динозавра будет изменены."
+                "       • Рост, голод, жажда динозавра будет изменены.\n"
+                "       • Мутации динозавра не сохраняются. Перевыбрать их Вы сможете самостоятельно при получении "
+                "самого роста в игре при активации слота"
             )
             embed.add_field(
                 name="📋 Правила активации",
@@ -234,6 +238,7 @@ class DinosaurSelectView(View):
             await self.update_view(interaction)
         elif custom_id == "activate_dino":
             if self.selected_dino:
+                # TODO: Переделать процесс активации
                 wait_embed = discord.Embed(
                     title="⏳ Пожалуйста, подождите",
                     description="Происходит активация выбранного динозавра...\nЭто может занять несколько секунд.",
@@ -317,12 +322,8 @@ class DinosaurDeleteSelectView(View):
             ))
 
     def create_select_menu(self) -> Select:
-        placeholder = (
-            f"Вы выбрали: {self.selected_dino}"
-            if self.selected_dino
-            else "Выберите динозавра для удаления"
-        )
         options = []
+        saved_dino_class = ""
         limited = False
         for dino in self.dinosaurs[:25]:
             id = dino["id"]
@@ -331,8 +332,15 @@ class DinosaurDeleteSelectView(View):
             thirst = dino["thirst"]
             health = dino["health"]
             dino_name = find_name_by_class(dino["dino_class"])
+            if str(id) == self.selected_dino:
+                saved_dino_class = dino_name
             label = f"({id}) {dino_name} (Рост {growth}, Голод: {hunger}, Жажда: {thirst}, HP: {health})"
             options.append(discord.SelectOption(label=label, value=str(id)))
+        placeholder = (
+            f"Вы выбрали: {saved_dino_class}"
+            if saved_dino_class
+            else "Выберите динозавра для удаления"
+        )
         if len(self.dinosaurs) > 25:
             limited = True
         self.limited = limited
