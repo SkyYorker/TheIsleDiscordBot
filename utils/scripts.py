@@ -36,8 +36,37 @@ async def save_dino(discord_id: int):
 
     return result
 
+async def get_pending_dino(steam_id: str):
+    pending_dino = await PendingDinoCRUD.get_by_steam_id(steam_id)
+    if not pending_dino or len(pending_dino) == 0:
+        return None, "Динозавр для сохранения не найден"
+    if len(pending_dino) > 1:
+        return None, "Запущено несколько процессов сохранения динозавров"
+    return pending_dino[0]
 
-async def save_dino_new(discord_id: int, callback_url: str):
+async def save_dino_to_db(steam_id: str, dino_class: str, growth: float):
+    current_dino = await get_pending_dino(steam_id)
+    if isinstance(current_dino, tuple):
+        return current_dino
+
+    if dino_class not in current_dino["dino_class"] :
+        return None, "Сохраняемые динозавры отличаются"
+
+    result = await PlayerDinoCRUD.add_dino(
+        steam_id,
+        current_dino["dino_class"],
+        min(int(current_dino["dino_class"] * 100), 99),
+        int(growth * 100),
+        int(current_dino["hunger"] * 100),
+        int(current_dino["health"] * 100)
+    )
+    if not result:
+        return None, "Техническая ошибка. Обратитесь к администратору"
+
+    return result
+
+
+async def pending_save_dino(discord_id: int, callback_url: str):
     player = await PlayerDinoCRUD.get_player_info(discord_id)
     # TODO: Сделать ограничение на кол-во сохранений
     if not player:
@@ -51,7 +80,12 @@ async def save_dino_new(discord_id: int, callback_url: str):
     if not isle_player:
         return None, "Игрок не на сервере"
 
-    await PendingDinoCRUD.add_pending_dino(steam_id, discord_id, callback_url)
+    await PendingDinoCRUD.add_pending_dino(steam_id, discord_id, callback_url,
+                                           isle_player.dino_class,
+                                           min(int(isle_player.growth * 100), 99),
+                                           int(isle_player.hunger * 100),
+                                           int(isle_player.thirst * 100),
+                                           int(isle_player.health * 100))
 
     return True
 
