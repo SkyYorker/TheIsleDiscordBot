@@ -167,13 +167,23 @@ class PendingDinoCRUD:
     async def add_pending_dino(
             steam_id: str,
             discord_id: int,
-            url: str
+            url: str,
+            dino_class: str,
+            growth: int,
+            hunger: int,
+            thirst: int,
+            health: int
     ) -> Dict[str, Any]:
         async with async_session_maker() as session:
             pending = PendingDinoStorage(
                 steam_id=steam_id,
                 discord_id=discord_id,
-                url=url
+                url=url,
+                dino_class=dino_class,
+                growth=growth,
+                hunger=hunger,
+                thirst=thirst,
+                health=health
             )
             session.add(pending)
             await session.commit()
@@ -232,4 +242,9 @@ class PendingDinoCRUD:
             "discord_id": obj.discord_id,
             "created_at": obj.created_at,
             "url": obj.url,
+            "dino_class": obj.dino_class,
+            "growth": obj.growth,
+            "hunger": obj.hunger,
+            "thirst": obj.thirst,
+            "health": obj.health,
         }

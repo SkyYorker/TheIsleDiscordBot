@@ -54,6 +54,12 @@ class PendingDinoStorage(Base):
         DateTime(timezone=True), default=datetime.now(UTC), nullable=False
     )
     url: Mapped[str] = mapped_column(Text, nullable=False)
+    dino_class: Mapped[str] = mapped_column(Text, nullable=False)
+    growth: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    hunger: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    thirst: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    health: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
 
     def __repr__(self):
         return (
