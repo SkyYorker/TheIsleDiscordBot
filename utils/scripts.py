@@ -55,8 +55,8 @@ async def save_dino_to_db(steam_id: str, dino_class: str, growth: float):
     result = await PlayerDinoCRUD.add_dino(
         steam_id,
         current_dino["dino_class"],
-        min(int(current_dino["dino_class"] * 100), 99),
-        int(growth * 100),
+        min(int(current_dino["growth"] * 100), 99),
+        int(current_dino["thirst"] * 100),
         int(current_dino["hunger"] * 100),
         int(current_dino["health"] * 100)
     )
