@@ -80,6 +80,8 @@ async def pending_save_dino(discord_id: int, callback_url: str):
     if not isle_player:
         return None, "Игрок не на сервере"
 
+    await PendingDinoCRUD.cleanup_old_entries(2)
+
     await PendingDinoCRUD.add_pending_dino(steam_id, discord_id, callback_url,
                                            isle_player.dino_class,
                                            min(int(isle_player.growth * 100), 99),
