@@ -94,7 +94,8 @@ async def process_line(line):
 
 def main():
     log_path = r"C:\Servers\servers\2\serverfiles\TheIsle\Saved\Logs\TheIsle-Shipping.log"
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     event_handler = LogFileHandler(log_path, process_line, loop)
     observer = Observer()
