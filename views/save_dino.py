@@ -51,10 +51,10 @@ class SaveDinoView(View):
             return
 
         await del_pending_dino_by_discordid(interaction.user.id)
-        await interaction.response.edit_message(
+        await interaction.edit_original_response(
             content="⏰ Время на сохранение истекло!",
             view=None,
-            embeds=None
+            embeds=[]
         )
 
     @property
