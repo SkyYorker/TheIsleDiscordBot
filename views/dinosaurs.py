@@ -429,13 +429,14 @@ class DinosaurDeleteSelectView(View):
                         description=reason,
                         color=discord.Color.red()
                     )
-                    await interaction.followup.edit_message(
+                    await interaction.response.edit_message(
                         interaction.message.id,
                         embed=embed,
                         view=None,
                         content=None
                     )
-                await interaction.followup.edit_message(
+                    return False
+                await interaction.response.edit_message(
                     embed=None,
                     view=None,
                     content=f"Динозавр {self.selected_dino} успешно удалён из сохранённых!"
