@@ -180,9 +180,9 @@ async def process_line(line):
     if error:
         return None
 
-    await send_dino_saved_embeds(BOT_TOKEN, dino, dino_type, growth)
-
     await del_dino_saves(steamid)
+
+    await send_dino_saved_embeds(BOT_TOKEN, dino, dino_type, growth)
 
     return None
 
