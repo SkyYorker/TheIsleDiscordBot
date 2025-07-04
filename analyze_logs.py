@@ -11,7 +11,7 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from utils.discord_api import edit_ephemeral_message, send_dm
-from utils.scripts import save_dino_to_db, get_pending_dino
+from utils.scripts import save_dino_to_db, get_pending_dino, del_pending_dino
 
 BOT_TOKEN = os.getenv("DISCORD_TOKEN")
 
@@ -97,9 +97,14 @@ async def process_line(line):
     try:
         logger.info(f"Пробуем сохранить динозавра в БД: steamid={steamid}, dino_type={dino_type}, growth={growth}")
         result = await save_dino_to_db(steamid, dino_type, growth)
+        if isinstance(result, tuple):
+            return
+        await del_pending_dino(steamid)
     except Exception as e:
         logger.error(f"Ошибка при сохранении динозавра в БД: {e}", exc_info=True)
         return None
+
+
 
     if isinstance(result, tuple):
         logger.warning(f"Ошибка при сохранении динозавра в БД: {result[1]}")

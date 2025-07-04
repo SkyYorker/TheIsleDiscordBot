@@ -36,6 +36,7 @@ async def save_dino(discord_id: int):
 
     return result
 
+
 async def get_pending_dino(steam_id: str):
     pending_dino = await PendingDinoCRUD.get_by_steam_id(steam_id)
     if not pending_dino or len(pending_dino) == 0:
@@ -44,12 +45,13 @@ async def get_pending_dino(steam_id: str):
         return None, "Запущено несколько процессов сохранения динозавров"
     return pending_dino[0]
 
+
 async def save_dino_to_db(steam_id: str, dino_class: str, growth: float):
     current_dino = await get_pending_dino(steam_id)
     if isinstance(current_dino, tuple):
         return current_dino
 
-    if dino_class not in current_dino["dino_class"] :
+    if dino_class not in current_dino["dino_class"]:
         return None, "Сохраняемые динозавры отличаются"
 
     result = await PlayerDinoCRUD.add_dino(
@@ -64,6 +66,10 @@ async def save_dino_to_db(steam_id: str, dino_class: str, growth: float):
         return None, "Техническая ошибка. Обратитесь к администратору"
 
     return result
+
+
+async def del_pending_dino(steam_id: str):
+    return await PendingDinoCRUD.delete_by_steam_id(steam_id)
 
 
 async def pending_save_dino(discord_id: int, callback_url: str):
