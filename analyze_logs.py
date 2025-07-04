@@ -68,12 +68,10 @@ class LogFileHandler(FileSystemEventHandler):
             logger.error(f"Неизвестная ошибка при чтении файла: {e}")
 
 
-async def process_line(line):
+def parse_log_line(line):
     if "Left The Server whilebeing safelogged" not in line:
-        return None
+        return None, None, None
 
-    # Пример строки:
-    # [15:52][LogTheIsleJoinData]: DayBot [76561199671085032] Left The Server whilebeing safelogged, Was playing as: Diabloceratops, Gender: Male, Growth: 0.281349
     steamid_match = re.search(r"\[(\d{17})\]", line)
     dino_match = re.search(r"Was playing as: ([^,]+)", line)
     growth_match = re.search(r"Growth: ([\d.]+)", line)
@@ -82,55 +80,94 @@ async def process_line(line):
     dino_type = dino_match.group(1) if dino_match else None
     growth = float(growth_match.group(1)) if growth_match else None
 
-    logger.debug(f"Результаты парсинга: steamid={steamid}, dino_type={dino_type}, growth={growth}")
+    return steamid, dino_type, growth
 
-    if not steamid or not dino_type or not growth:
-        logger.warning(
-            f"Не удалось распарсить необходимые данные из строки: steamid={steamid}, dino_type={dino_type}, growth={growth}"
-        )
-        return None
 
+async def activate_dino(steamid, dino_type, growth):
     try:
-        logger.info(f"Пробуем получить pending_dino для steamid={steamid}")
         dino = await get_pending_dino(steamid)
     except Exception as e:
         logger.error(f"Ошибка при получении pending_dino для steamid={steamid}: {e}", exc_info=True)
-        return None
+        return None, None, "pending_error"
 
     if isinstance(dino, tuple):
         logger.warning(f"Ошибка при получении pending_dino: {dino[1]}")
-        return None
+        return None, None, "pending_tuple"
 
     try:
-        logger.info(f"Пробуем сохранить динозавра в БД: steamid={steamid}, dino_type={dino_type}, growth={growth}")
         result = await save_dino_to_db(steamid, dino_type, growth)
         if isinstance(result, tuple):
-            return
+            return dino, result, "save_error"
         await del_pending_dino(steamid)
     except Exception as e:
         logger.error(f"Ошибка при сохранении динозавра в БД: {e}", exc_info=True)
-        return None
-
-
+        return dino, None, "db_exception"
 
     if isinstance(result, tuple):
         logger.warning(f"Ошибка при сохранении динозавра в БД: {result[1]}")
-        return None
+        return dino, result, "save_tuple"
 
+    return dino, result, None
+
+
+def make_activation_embed(dino_type, growth):
+    return {
+        "title": "Динозавр активирован!",
+        "description": f"Ваш динозавр **{dino_type}** был успешно активирован.",
+        "color": 0x43B581,
+        "fields": [
+            {
+                "name": "Тип динозавра",
+                "value": dino_type,
+                "inline": True
+            },
+            {
+                "name": "Рост",
+                "value": f"{growth:.3f}",
+                "inline": True
+            }
+        ],
+        "footer": {
+            "text": "Поздравляем с активацией!"
+        }
+    }
+
+
+async def send_activation_embeds(bot_token, dino, dino_type, growth):
+    embed = make_activation_embed(dino_type, growth)
     try:
-        logger.info(f"Пробуем отредактировать эфемерное сообщение для discord_id={dino.get('discord_id')}, url={dino.get('url')}")
-        await edit_ephemeral_message(BOT_TOKEN, dino.get("url", ""), "Активация успешна")
+        await edit_ephemeral_message(
+            bot_token,
+            dino.get("url", ""),
+            "",
+            embeds=[embed]
+        )
     except Exception as e:
         logger.error(f"Ошибка при редактировании эфемерного сообщения: {e}", exc_info=True)
 
     try:
-        logger.info(f"Пробуем отправить ЛС пользователю discord_id={dino.get('discord_id')}")
-        await send_dm(BOT_TOKEN, dino.get("discord_id", ""), "Ваш динозавр успешно активирован")
+        await send_dm(
+            bot_token,
+            dino.get("discord_id", ""),
+            "",
+            embeds=[embed]
+        )
     except Exception as e:
         logger.error(f"Ошибка при отправке ЛС: {e}", exc_info=True)
 
-    logger.info(f"Успешно обработана строка: SteamID={steamid}, Dino={dino_type}, Growth={growth}")
+
+async def process_line(line):
+    steamid, dino_type, growth = parse_log_line(line)
+    if not steamid or not dino_type or not growth:
+        return None
+
+    dino, result, error = await activate_dino(steamid, dino_type, growth)
+    if error:
+        return None
+
+    await send_activation_embeds(BOT_TOKEN, dino, dino_type, growth)
     return None
+
 
 def main():
     log_path = r"C:\Servers\servers\2\serverfiles\TheIsle\Saved\Logs\TheIsle-Shipping.log"
