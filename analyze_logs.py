@@ -15,6 +15,8 @@ from utils.discord_api import edit_ephemeral_message, send_dm
 from utils.scripts import save_dino_to_db, get_pending_dino, del_pending_dino_by_steamid
 
 BOT_TOKEN = os.getenv("DISCORD_TOKEN")
+LOG_FOLDER = os.getenv("LOG_FOLDER")
+SAVE_FOLDER = os.getenv("SAVE_FOLDER")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -82,6 +84,17 @@ def parse_log_line(line):
 
     return steamid, dino_type, growth
 
+async def del_dino_saves(steamid: str):
+    saves = [f"{steamid}.sav", f"{steamid}.sav.bak"]
+    for filename in saves:
+        file_path = os.path.join(SAVE_FOLDER, filename)
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                logger.error(f"Ошибка при удалении сохранения {filename} : {e}")
+        else:
+            logger.debug(f"Файла {filename} не существует")
 
 async def save_dino(steamid, dino_type, growth):
     try:
@@ -161,6 +174,8 @@ async def process_line(line):
     if not steamid or not dino_type or not growth:
         return None
 
+    await del_dino_saves(steamid)
+
     dino, result, error = await save_dino(steamid, dino_type, growth)
     if error:
         return None
@@ -170,7 +185,7 @@ async def process_line(line):
 
 
 def main():
-    log_path = r"C:\Servers\servers\2\serverfiles\TheIsle\Saved\Logs\TheIsle-Shipping.log"
+    log_path = LOG_FOLDER
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
