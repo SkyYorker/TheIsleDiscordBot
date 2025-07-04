@@ -65,12 +65,6 @@ class DinosaurSelectView(View):
                 custom_id="go_main_menu",
                 row=1
             ))
-            self.add_item(Button(
-                label="Назад",
-                style=discord.ButtonStyle.red,
-                custom_id="go_back",
-                row=1
-            ))
 
     def build_dino_select(self, category: str):
         self.clear_items()
@@ -421,7 +415,7 @@ class DinosaurDeleteSelectView(View):
         elif custom_id == "delete_dino":
             if self.selected_dino:
                 result = await del_dino(interaction.user.id, int(self.selected_dino))
-                if not result or isinstance(result, tuple):
+                if not result or (isinstance(result, tuple) and not result[0]):
                     reason = result[1] if isinstance(result, tuple) and len(
                         result) > 1 else "Не удалось удалить сохраненного динозавра."
                     embed = discord.Embed(
