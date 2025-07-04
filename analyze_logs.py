@@ -85,7 +85,7 @@ def parse_log_line(line):
     return steamid, dino_type, growth
 
 async def del_dino_saves(steamid: str):
-    await asyncio.sleep(1)
+    await asyncio.sleep(3)
     saves = [f"{steamid}.sav", f"{steamid}.sav.bak"]
     for filename in saves:
         file_path = os.path.join(SAVE_FOLDER, filename)
@@ -176,13 +176,14 @@ async def process_line(line):
     if not steamid or not dino_type or not growth:
         return None
 
-    await del_dino_saves(steamid)
-
     dino, result, error = await save_dino(steamid, dino_type, growth)
     if error:
         return None
 
     await send_dino_saved_embeds(BOT_TOKEN, dino, dino_type, growth)
+
+    await del_dino_saves(steamid)
+
     return None
 
 
