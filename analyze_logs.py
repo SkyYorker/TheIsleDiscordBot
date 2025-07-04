@@ -123,7 +123,7 @@ def make_activation_embed(dino_type, growth):
             },
             {
                 "name": "Рост",
-                "value": f"{growth:.3f}",
+                "value": f"{growth * 100:.3f}%",
                 "inline": True
             }
         ],
