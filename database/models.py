@@ -4,9 +4,8 @@ from sqlalchemy import (
     DateTime,
     Text,
     Integer,
-    ForeignKey,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
@@ -23,13 +22,6 @@ class Players(Base):
         DateTime(timezone=True), default=datetime.now(UTC), nullable=False
     )
 
-    dinos: Mapped[list["DinoStorage"]] = relationship(
-        "DinoStorage",
-        back_populates="player",
-        cascade=None,
-        passive_deletes=True,
-    )
-
 
 class DinoStorage(Base):
     __tablename__ = "dino_storage"
@@ -40,13 +32,7 @@ class DinoStorage(Base):
     hunger: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     thirst: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     health: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    steam_id: Mapped[str] = mapped_column(
-        ForeignKey("players.steam_id", ondelete="RESTRICT"),
-        nullable=False,
-        index=True
-    )
-
-    player: Mapped["Players"] = relationship("Players", back_populates="dinos")
+    steam_id: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class PendingDinoStorage(Base):
