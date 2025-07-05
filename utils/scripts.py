@@ -70,7 +70,7 @@ async def save_dino_to_db(steam_id: str, dino_class: str, growth: float) -> Tupl
     result = await PlayerDinoCRUD.add_dino(
         steam_id,
         current_dino["dino_class"],
-        min(int(current_dino["growth"] * 100), 99),
+        min(int(current_dino["growth"]), 99),
         int(current_dino["thirst"]),
         int(current_dino["hunger"]),
         int(current_dino["health"])
