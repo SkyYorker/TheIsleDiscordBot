@@ -74,7 +74,7 @@ class MainMenuView(View):
         ))
 
         self.add_item(Button(
-            label="Удалить динозавра",
+            label="Освободить динозавра",
             style=discord.ButtonStyle.red,
             emoji="🗑️",
             custom_id="delete_dino",
