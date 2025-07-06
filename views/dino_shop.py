@@ -38,7 +38,7 @@ def dino_characteristics_embed(dino_name: str) -> discord.Embed:
 
 class DinoPurchaseConfirmationView(View):
     def __init__(self, shop_view: 'DinoShopView', main_menu_embed: discord.Embed, main_menu_view: View):
-        super().__init__(timeout=120)
+        super().__init__(timeout=None)
         self.shop_view = shop_view
         self.main_menu_embed = main_menu_embed
         self.main_menu_view = main_menu_view
@@ -80,7 +80,7 @@ class DinoPurchaseConfirmationView(View):
 
 class DinoShopView(View):
     def __init__(self, main_menu_embed: discord.Embed, main_menu_view: View):
-        super().__init__(timeout=180)
+        super().__init__(timeout=None)
         self.main_menu_view = main_menu_view
         self.main_menu_embed = main_menu_embed
 

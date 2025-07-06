@@ -16,7 +16,7 @@ LOGO_URL = os.getenv("LOGO_URL")
 
 class KillDinoResultView(View):
     def __init__(self, main_menu_embed, main_menu_view):
-        super().__init__(timeout=60)
+        super().__init__(timeout=None)
         self.main_menu_embed = main_menu_embed
         self.main_menu_view = main_menu_view
         self.add_item(Button(
@@ -36,7 +36,7 @@ class KillDinoResultView(View):
 
 class MainMenuView(View):
     def __init__(self, steam_data: dict, user_id: int):
-        super().__init__(timeout=180)
+        super().__init__(timeout=None)
 
         self.steam_data = steam_data
         self.user_id = user_id

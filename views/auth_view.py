@@ -17,7 +17,7 @@ steam_api = SteamAPI(api_key=os.getenv("STEAM_API_KEY"))
 
 class SteamLinkModal(Modal):
     def __init__(self, user_id: int):
-        super().__init__(title="Привязка Steam аккаунта")
+        super().__init__(timeout=None, title="Привязка Steam аккаунта")
         self.user_id = user_id
         self.steamid = InputText(
             label="Введите ваш SteamID64",

@@ -17,7 +17,7 @@ def filter_dinos_by_category(dinos: List[Dict[str, Any]], category: str) -> List
 
 class DinosaurSelectView(View):
     def __init__(self, original_embed: Embed, original_view: View, dinosaurs: List[Dict[str, Any]]):
-        super().__init__(timeout=180)
+        super().__init__(timeout=None)
         self.original_view = original_view
         self.original_embed = original_embed
         self.dinosaurs = dinosaurs
@@ -270,7 +270,7 @@ class DinosaurSelectView(View):
 
 class DinosaurDeleteSelectView(View):
     def __init__(self, original_embed: Embed, original_view: View, dinosaurs: List[Dict[str, Any]]):
-        super().__init__(timeout=180)
+        super().__init__(timeout=None)
         self.original_view = original_view
         self.original_embed = original_embed
         self.selected_dino: Optional[str] = None

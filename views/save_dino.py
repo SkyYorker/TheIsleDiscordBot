@@ -9,7 +9,7 @@ from utils.scripts import pending_save_dino, del_pending_dino_by_discordid
 
 class SaveDinoView(View):
     def __init__(self, main_menu_view: View, main_menu_embed: discord.Embed):
-        super().__init__(timeout=180)
+        super().__init__(timeout=None)
         self.rules_accepted = False
         self.main_menu_view = main_menu_view
         self.main_menu_embed = main_menu_embed
