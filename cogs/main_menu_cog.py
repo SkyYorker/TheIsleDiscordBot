@@ -1,7 +1,11 @@
+import os
+
 import discord
 from discord.ext import commands
 
 from views.auth_view import AuthView
+
+LOGO_URL = os.getenv("LOGO_URL")
 
 
 class MainMenuCog(commands.Cog):
@@ -14,7 +18,8 @@ class MainMenuCog(commands.Cog):
         embed = discord.Embed(
             title="🔹 Меню пользователя",
             description="Нажмите кнопку ниже, чтобы открыть меню.",
-            color=discord.Color.blue()
+            color=discord.Color.blue(),
+            image=LOGO_URL
         )
         await ctx.send(embed=embed, view=AuthView())
         await ctx.respond("Кнопка отправлена!", ephemeral=True)

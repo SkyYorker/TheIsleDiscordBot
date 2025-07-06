@@ -1,3 +1,5 @@
+import os
+
 import discord
 from discord.ui import View, Button
 
@@ -8,6 +10,8 @@ from views.dino_shop import DinoShopView
 from views.dinosaurs import DinosaurSelectView, DinosaurDeleteSelectView
 from views.kill_dino_confirm import KillDinoConfirmView, kill_dino_confirm_embed
 from views.save_dino import SaveDinoView
+
+LOGO_URL = os.getenv("LOGO_URL")
 
 
 class KillDinoResultView(View):
@@ -116,7 +120,7 @@ class MainMenuView(View):
                 f"━━━━━━━━━━━━━━━━━━"
             ),
             color=discord.Color.green(),
-            image="https://media.discordapp.net/attachments/1376971745621315726/1380547758200717394/ChatGPT_Image_6_._2025_._17_03_38.png?ex=6847928a&is=6846410a&hm=74722d1a946cebd70c1dc426f37d9e527f29e121a6f400985bb5d776418fa6af&=&format=webp&quality=lossless&width=1240&height=826"
+            image=LOGO_URL
         )
         embed.set_thumbnail(url=self.steam_data.get("avatar"))
         embed.set_footer(text="🔗 Используйте кнопки ниже для управления профилем")
@@ -185,7 +189,8 @@ class MainMenuView(View):
             if not current_dino or isinstance(current_dino, tuple):
                 embed = discord.Embed(
                     title="Ошибка",
-                    description=current_dino[1] if isinstance(current_dino, tuple) else "У вас нет активного динозавра.",
+                    description=current_dino[1] if isinstance(current_dino,
+                                                              tuple) else "У вас нет активного динозавра.",
                     color=discord.Color.orange()
                 )
                 error_view = discord.ui.View(timeout=60)
