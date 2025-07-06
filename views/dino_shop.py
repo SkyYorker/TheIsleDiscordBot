@@ -65,9 +65,13 @@ class DinoPurchaseConfirmationView(View):
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         custom_id = interaction.data.get("custom_id")
         if custom_id == "back_to_shop":
-            await interaction.response.edit_message(embed=self.shop_view.embed, view=self.shop_view)
+            await interaction.response.edit_message(content=None,
+                                                    embed=self.shop_view.embed,
+                                                    view=self.shop_view)
         elif custom_id == "back_to_menu":
-            await interaction.response.edit_message(embed=self.main_menu_embed, view=self.main_menu_view)
+            await interaction.response.edit_message(content = None,
+                                                    embed=self.main_menu_embed,
+                                                    view=self.main_menu_view)
         elif custom_id == "close":
             await interaction.response.defer()
             await interaction.delete_original_response()
