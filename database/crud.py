@@ -1,17 +1,229 @@
-from datetime import datetime, UTC, timedelta
-from typing import List, Dict, Any, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Dict, List, Optional, Any
 
-from sqlalchemy import select, delete
+from sqlalchemy import delete
+from sqlalchemy import select, update
 
 from . import async_session_maker
 from . import engine
 from .models import PendingDinoStorage
-from .models import Players, DinoStorage, Base
+from .models import Players, DinoStorage, Base, Subscription, SubscriptionTier
 
 
 async def init_models():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+
+class SubscriptionCRUD:
+    @staticmethod
+    async def get_active_subscription(discord_id: int) -> Optional[Dict[str, Any]]:
+        async with async_session_maker() as session:
+            result = await session.execute(
+                select(Subscription)
+                .where(Subscription.player_id == discord_id)
+                .where(Subscription.is_active == True)
+                .where(Subscription.expiration_date > datetime.now(UTC))
+                .order_by(Subscription.expiration_date.desc())
+            )
+            sub = result.scalars().first()
+            return {
+                "id": sub.id,
+                "tier": sub.tier.name,
+                "dino_slots": sub.dino_slots,
+                "is_active": sub.is_active,
+                "auto_renewal": sub.auto_renewal,
+                "expiration_date": sub.expiration_date
+            } if sub else None
+
+    @staticmethod
+    async def add_subscription(
+            discord_id: int,
+            tier: SubscriptionTier,
+            duration_days: int = 30,
+            auto_renewal: bool = True
+    ) -> Dict[str, Any]:
+        async with async_session_maker() as session:
+            sub = Subscription.create(
+                player_id=discord_id,
+                tier=tier,
+                duration_days=duration_days
+            )
+            sub.auto_renewal = auto_renewal
+
+            session.add(sub)
+            await session.commit()
+            await session.refresh(sub)
+
+            return {
+                "id": sub.id,
+                "tier": sub.tier.name,
+                "dino_slots": sub.dino_slots,
+                "expiration_date": sub.expiration_date,
+                "auto_renewal": sub.auto_renewal
+            }
+
+    @staticmethod
+    async def update_subscription(
+            subscription_id: int,
+            updates: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        async with async_session_maker() as session:
+            result = await session.execute(
+                update(Subscription)
+                .where(Subscription.id == subscription_id)
+                .values(**updates)
+                .returning(Subscription)
+            )
+            updated_sub = result.scalars().first()
+            if not updated_sub:
+                return None
+
+            await session.commit()
+            await session.refresh(updated_sub)
+
+            return {
+                "id": updated_sub.id,
+                "tier": updated_sub.tier.name,
+                "is_active": updated_sub.is_active,
+                "auto_renewal": updated_sub.auto_renewal,
+                "expiration_date": updated_sub.expiration_date
+            }
+
+    @staticmethod
+    async def cancel_subscription(subscription_id: int) -> bool:
+        async with async_session_maker() as session:
+            result = await session.execute(
+                update(Subscription)
+                .where(Subscription.id == subscription_id)
+                .values(auto_renewal=False)
+            )
+            await session.commit()
+            return result.rowcount > 0
+
+    @staticmethod
+    async def expire_subscription(subscription_id: int) -> bool:
+        async with async_session_maker() as session:
+            result = await session.execute(
+                update(Subscription)
+                .where(Subscription.id == subscription_id)
+                .values(is_active=False)
+            )
+            await session.commit()
+            return result.rowcount > 0
+
+    @staticmethod
+    async def get_player_subscriptions(
+            discord_id: int,
+            active_only: bool = False
+    ) -> List[Dict[str, Any]]:
+        async with async_session_maker() as session:
+            query = select(Subscription).where(Subscription.player_id == discord_id)
+
+            if active_only:
+                query = query.where(
+                    Subscription.is_active == True,
+                    Subscription.expiration_date > datetime.now(UTC)
+                )
+
+            result = await session.execute(query.order_by(Subscription.expiration_date.desc()))
+            return [
+                {
+                    "id": sub.id,
+                    "tier": sub.tier.name,
+                    "dino_slots": sub.dino_slots,
+                    "is_active": sub.is_active,
+                    "auto_renewal": sub.auto_renewal,
+                    "purchase_date": sub.purchase_date,
+                    "expiration_date": sub.expiration_date
+                }
+                for sub in result.scalars()
+            ]
+
+    @staticmethod
+    async def renew_subscription(
+            subscription_id: int,
+            duration_days: int = 30
+    ) -> Optional[Dict[str, Any]]:
+        async with async_session_maker() as session:
+            sub = await session.scalar(
+                select(Subscription).where(Subscription.id == subscription_id)
+            )
+            if not sub:
+                return None
+
+            sub.expiration_date = max(
+                datetime.now(UTC),
+                sub.expiration_date
+            ) + timedelta(days=duration_days)
+            sub.is_active = True
+
+            await session.commit()
+            await session.refresh(sub)
+
+            return {
+                "id": sub.id,
+                "new_expiration_date": sub.expiration_date,
+                "tier": sub.tier.name
+            }
+
+    @staticmethod
+    async def get_expiring_subscriptions(
+            hours_before: int = 24
+    ) -> List[Dict[str, Any]]:
+        async with async_session_maker() as session:
+            now = datetime.now(UTC)
+            expiration_threshold = now + timedelta(hours=hours_before)
+
+            result = await session.execute(
+                select(Subscription)
+                .where(Subscription.is_active == True)
+                .where(Subscription.expiration_date <= expiration_threshold)
+                .where(Subscription.expiration_date > now)
+            )
+            return [
+                {
+                    "id": sub.id,
+                    "player_id": sub.player_id,
+                    "tier": sub.tier.name,
+                    "auto_renewal": sub.auto_renewal,
+                    "expiration_date": sub.expiration_date
+                }
+                for sub in result.scalars()
+            ]
+
+    @staticmethod
+    async def get_expired_subscriptions() -> List[Dict[str, Any]]:
+        async with async_session_maker() as session:
+            result = await session.execute(
+                select(Subscription)
+                .where(Subscription.is_active == True)
+                .where(Subscription.expiration_date <= datetime.now(UTC))
+            )
+            return [
+                {
+                    "id": sub.id,
+                    "player_id": sub.player_id,
+                    "tier": sub.tier.name,
+                    "auto_renewal": sub.auto_renewal,
+                    "expiration_date": sub.expiration_date
+                }
+                for sub in result.scalars()
+            ]
+
+    @staticmethod
+    async def bulk_update_subscriptions(
+            subscription_ids: List[int],
+            updates: Dict[str, Any]
+    ) -> int:
+        async with async_session_maker() as session:
+            result = await session.execute(
+                update(Subscription)
+                .where(Subscription.id.in_(subscription_ids))
+                .values(**updates)
+            )
+            await session.commit()
+            return result.rowcount
 
 
 class DonationCRUD:
@@ -44,22 +256,33 @@ class DonationCRUD:
             }
 
     @staticmethod
-    async def remove_tk(discord_id: int, amount: int) -> Optional[Dict[str, Any]]:
+    async def remove_tk(discord_id: int, amount: int) -> bool:
         async with async_session_maker() as session:
-            player = await session.scalar(
-                select(Players).where(Players.discord_id == discord_id)
+            current_tk = await session.execute(
+                select(Players.tk).where(Players.discord_id == discord_id)
             )
-            if not player:
-                return None
-            player.tk = max(0, player.tk - amount)
+            current_tk = current_tk.scalar_one_or_none()
+
+            if current_tk is None or current_tk < amount:
+                return False
+
+            result = await session.execute(
+                update(Players)
+                .where(Players.discord_id == discord_id)
+                .values(tk=Players.tk - amount)
+            )
             await session.commit()
-            await session.refresh(player)
-            return {
-                "discord_id": player.discord_id,
-                "steam_id": player.steam_id,
-                "tk": player.tk,
-                "registry_date": player.registry_date,
-            }
+            return result.rowcount > 0
+
+    @staticmethod
+    async def check_balance(discord_id: int, amount: int) -> bool:
+        async with async_session_maker() as session:
+            result = await session.execute(
+                select(Players.tk)
+                .where(Players.discord_id == discord_id)
+            )
+            balance = result.scalar()
+            return balance >= amount if balance is not None else False
 
 
 class PlayerDinoCRUD:

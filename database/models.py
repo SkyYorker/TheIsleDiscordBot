@@ -1,15 +1,78 @@
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timedelta
+from enum import Enum, auto
+from typing import Optional
 
-from sqlalchemy import (
-    DateTime,
-    Text,
-    Integer,
-)
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import DateTime, Text, Integer, Boolean, Enum as SQLEnum, ForeignKey
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
     pass
+
+
+class SubscriptionTier(Enum):
+    PLUS = auto()
+    PREMIUM = auto()
+    SUPREME = auto()
+
+
+SUBSCRIPTION_CONFIG = {
+    SubscriptionTier.PLUS: {
+        "price": 199,
+        "dino_slots": 3,
+        "discord_role_id": 1390977866463973529
+    },
+    SubscriptionTier.PREMIUM: {
+        "price": 799,
+        "dino_slots": 6,
+        "discord_role_id": 1390977787610796072
+    },
+    SubscriptionTier.SUPREME: {
+        "price": 1599,
+        "dino_slots": 8,
+        "discord_role_id": 1073250412880216166
+    }
+}
+
+
+class Subscription(Base):
+    __tablename__ = "subscriptions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    player_id: Mapped[int] = mapped_column(ForeignKey("players.discord_id"), index=True)
+    tier: Mapped[SubscriptionTier] = mapped_column(SQLEnum(SubscriptionTier), nullable=False)
+    dino_slots: Mapped[int] = mapped_column(Integer, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    auto_renewal: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    purchase_date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.now(UTC), nullable=False
+    )
+    expiration_date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+    player: Mapped["Players"] = relationship(back_populates="subscriptions")
+
+    @classmethod
+    def create(
+            cls,
+            player_id: int,
+            tier: SubscriptionTier,
+            duration_days: int = 30
+    ) -> "Subscription":
+        if tier not in SUBSCRIPTION_CONFIG:
+            raise ValueError(f"Unknown subscription tier: {tier}")
+
+        now = datetime.now(UTC)
+        return cls(
+            player_id=player_id,
+            tier=tier,
+            dino_slots=SUBSCRIPTION_CONFIG[tier]["dino_slots"],
+            is_active=True,
+            auto_renewal=True,
+            purchase_date=now,
+            expiration_date=now + timedelta(days=duration_days)
+        )
 
 
 class Players(Base):
@@ -21,6 +84,24 @@ class Players(Base):
     registry_date: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.now(UTC), nullable=False
     )
+
+    subscriptions: Mapped[list["Subscription"]] = relationship(
+        back_populates="player",
+        order_by="Subscription.purchase_date.desc()"
+    )
+
+    def get_active_subscription(self) -> Optional["Subscription"]:
+        now = datetime.now(UTC)
+        for sub in self.subscriptions:
+            if sub.is_active and sub.expiration_date > now:
+                return sub
+        return None
+
+    def get_total_dino_slots(self, base_slots: int = 5) -> int:
+        active_sub = self.get_active_subscription()
+        if active_sub:
+            return base_slots + active_sub.dino_slots
+        return base_slots
 
 
 class DinoStorage(Base):

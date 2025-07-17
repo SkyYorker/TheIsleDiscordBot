@@ -3,7 +3,7 @@ import os
 import discord
 from discord.ui import View, Button
 
-from database.crud import PlayerDinoCRUD
+from database.crud import PlayerDinoCRUD, DonationCRUD
 from utils.rcon_isle import PlayerData
 from utils.scripts import get_all_dinos, get_current_dino, kill_current_dino
 from views.deposit_view import DepositView
@@ -11,6 +11,7 @@ from views.dino_shop import DinoShopView
 from views.dinosaurs import DinosaurSelectView, DinosaurDeleteSelectView
 from views.kill_dino_confirm import KillDinoConfirmView, kill_dino_confirm_embed
 from views.save_dino import SaveDinoView
+from views.subscription_management_view import SubscriptionManagementView
 
 LOGO_URL = os.getenv("LOGO_URL")
 
@@ -31,7 +32,8 @@ class KillDinoResultView(View):
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         custom_id = interaction.data.get("custom_id")
         if custom_id == "back_to_main_menu":
-            await interaction.response.edit_message(embed=self.main_menu_embed, view=self.main_menu_view)
+            await self.main_menu_view.update_player_data(interaction.user.id)
+            await interaction.response.edit_message(embed=self.main_menu_embed.embed, view=self.main_menu_view)
         return False
 
 
@@ -55,6 +57,14 @@ class MainMenuView(View):
             style=discord.ButtonStyle.green,
             emoji="🛒",
             custom_id="shop",
+            row=0
+        ))
+
+        self.add_item(Button(
+            label="Подписки",
+            style=discord.ButtonStyle.blurple,
+            emoji="🌟",
+            custom_id="subscription_management",
             row=0
         ))
 
@@ -105,6 +115,11 @@ class MainMenuView(View):
             custom_id="close",
             row=3
         ))
+
+    async def update_player_data(self, user_id: int):
+        updated_data = await DonationCRUD.get_tk(user_id)
+        if updated_data is not None and self.steam_data:
+            self.steam_data["tk"] = updated_data
 
     @property
     def embed(self) -> discord.Embed:
@@ -233,6 +248,13 @@ class MainMenuView(View):
         elif custom_id == "deposit":
             deposit_view = DepositView(self.embed, self)
             await deposit_view.show_deposit_modal(interaction)
+        elif custom_id == "subscription_management":
+            management_view = SubscriptionManagementView(
+                self.embed,
+                self,
+                interaction.user.id
+            )
+            await interaction.response.edit_message(embed=await management_view.get_embed(), view=management_view)
         elif custom_id == "close":
             await interaction.response.defer()
             await interaction.delete_original_response()

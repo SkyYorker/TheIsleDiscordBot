@@ -4,6 +4,7 @@ import discord
 from discord.ui import View, Select, Button
 
 from data.dinosaurus import DINOSAURS, CATEGORY_EMOJIS, find_name_by_class
+from database.crud import DonationCRUD
 from utils.scripts import buy_dino
 
 
@@ -26,7 +27,9 @@ def dino_characteristics_embed(dino_name: str) -> discord.Embed:
         color=discord.Color.green(),
         description=f"**Цена:** {details.get('price', '?')} ТС"
     )
-    embed.add_field(name="Категория", value=f"{CATEGORY_EMOJIS.get(details.get('category'), '')} {details.get('category', '?')}", inline=True)
+    embed.add_field(name="Категория",
+                    value=f"{CATEGORY_EMOJIS.get(details.get('category'), '')} {details.get('category', '?')}",
+                    inline=True)
     embed.add_field(name="В группе разрешено", value=details.get("group_limit", "?"), inline=True)
     embed.add_field(name="Макс. вес", value=details.get("weight", '?'), inline=True)
     embed.add_field(name="Скорость бега", value=details.get("speed", '?'), inline=True)
@@ -37,7 +40,7 @@ def dino_characteristics_embed(dino_name: str) -> discord.Embed:
 
 
 class DinoPurchaseConfirmationView(View):
-    def __init__(self, shop_view: 'DinoShopView', main_menu_embed: discord.Embed, main_menu_view: View):
+    def __init__(self, shop_view: 'DinoShopView', main_menu_embed: discord.Embed, main_menu_view):
         super().__init__(timeout=None)
         self.shop_view = shop_view
         self.main_menu_embed = main_menu_embed
@@ -69,9 +72,8 @@ class DinoPurchaseConfirmationView(View):
                                                     embed=self.shop_view.embed,
                                                     view=self.shop_view)
         elif custom_id == "back_to_menu":
-            await interaction.response.edit_message(content = None,
-                                                    embed=self.main_menu_embed,
-                                                    view=self.main_menu_view)
+            await self.main_menu_view.update_player_data(interaction.user.id)
+            await interaction.response.edit_message(embed=self.main_menu_view.embed, view=self.main_menu_view)
         elif custom_id == "close":
             await interaction.response.defer()
             await interaction.delete_original_response()
@@ -134,6 +136,7 @@ class DinoShopView(View):
             custom_id="select_category",
             row=0
         )
+
     def create_dino_select(self) -> Select:
         options = []
         if self.selected_category:
@@ -220,6 +223,21 @@ class DinoShopView(View):
                 self.selected_price = DINOSAURS.get(self.selected_dino).get("price", 0)
             await self.update_view(interaction)
         elif custom_id == "buy_dino":
+            has_enough_tk = await DonationCRUD.check_balance(interaction.user.id, self.selected_price)
+            if not has_enough_tk:
+                error_embed = discord.Embed(
+                    title="❌ Недостаточно ТC",
+                    description=f"У вас недостаточно ТC для покупки {self.selected_dino}.\n"
+                                f"Требуется: {self.selected_price} ТК\n"
+                                f"Ваш баланс: {await DonationCRUD.get_tk(interaction.user.id)} ТC",
+                    color=discord.Color.red()
+                )
+                await interaction.response.edit_message(
+                    content=None,
+                    embed=error_embed,
+                    view=self
+                )
+                return False
             if self.selected_dino and self.selected_price is not None:
                 current_dino = DINOSAURS[self.selected_dino]
                 result = await buy_dino(
@@ -240,6 +258,7 @@ class DinoShopView(View):
                         view=self
                     )
                 else:
+                    await DonationCRUD.remove_tk(interaction.user.id, self.selected_price)
                     confirmation_view = DinoPurchaseConfirmationView(self, self.main_menu_embed, self.main_menu_view)
                     await interaction.response.edit_message(
                         content=f"Вы купили динозавра **{self.selected_dino}** за **{self.selected_price} ТС**!",
