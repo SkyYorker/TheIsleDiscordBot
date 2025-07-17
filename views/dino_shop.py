@@ -1,7 +1,7 @@
 from typing import Optional, List
 
 import discord
-from discord.ui import View, Select, Button
+from discord.ui import View, Select, Button, Modal, InputText
 
 from data.dinosaurus import DINOSAURS, CATEGORY_EMOJIS, find_name_by_class
 from database.crud import DonationCRUD
@@ -14,7 +14,6 @@ def get_dinos_by_category(category: str) -> List[tuple[str, int]]:
 
 
 def dino_characteristics_embed(dino_name: str) -> discord.Embed:
-    """Создает embed с подробными характеристиками динозавра."""
     details = DINOSAURS.get(dino_name)
     if not details:
         return discord.Embed(
@@ -37,6 +36,84 @@ def dino_characteristics_embed(dino_name: str) -> discord.Embed:
     embed.set_image(url=details.get("image", ""))
     embed.set_footer(text="💡 Используйте кнопки ниже для дальнейших действий.")
     return embed
+
+
+class PurchaseQuantityModal(Modal):
+    def __init__(self, dino_name: str, price: int, shop_view: 'DinoShopView'):
+        super().__init__(title="Количество динозавров")
+        self.dino_name = dino_name
+        self.price = price
+        self.shop_view = shop_view
+
+        self.quantity = InputText(
+            label=f"Введите количество {dino_name} для покупки",
+            placeholder="1",
+            min_length=1,
+            max_length=3
+        )
+        self.add_item(self.quantity)
+
+    async def callback(self, interaction: discord.Interaction):
+        try:
+            quantity = int(self.quantity.value)
+            if quantity <= 0:
+                raise ValueError
+        except ValueError:
+            error_embed = discord.Embed(
+                title="❌ Ошибка",
+                description="Пожалуйста, введите корректное количество (целое число больше 0).",
+                color=discord.Color.red()
+            )
+            await interaction.response.edit_message(embed=error_embed, view=self.shop_view)
+            return
+
+        total_price = self.price * quantity
+        has_enough_tk = await DonationCRUD.check_balance(interaction.user.id, total_price)
+
+        if not has_enough_tk:
+            error_embed = discord.Embed(
+                title="❌ Недостаточно ТC",
+                description=f"У вас недостаточно ТC для покупки {quantity} {self.dino_name}.\n"
+                            f"Требуется: {total_price} ТС\n"
+                            f"Ваш баланс: {await DonationCRUD.get_tk(interaction.user.id)} ТC",
+                color=discord.Color.red()
+            )
+            await interaction.response.edit_message(embed=error_embed, view=self.shop_view)
+            return
+
+        current_dino = DINOSAURS[self.dino_name]
+        success_count = 0
+
+        for _ in range(quantity):
+            result = await buy_dino(
+                interaction.user.id,
+                current_dino["class_name"],
+                99, 100, 100, 100
+            )
+            if not (isinstance(result, tuple) and result[0] is None):
+                success_count += 1
+
+        if success_count > 0:
+            await DonationCRUD.remove_tk(interaction.user.id, total_price)
+            confirmation_view = DinoPurchaseConfirmationView(
+                self.shop_view,
+                self.shop_view.main_menu_embed,
+                self.shop_view.main_menu_view
+            )
+
+            embed = discord.Embed(
+                title="✅ Покупка успешна",
+                description=f"Вы купили {success_count} {self.dino_name} за {total_price} ТС!",
+                color=discord.Color.green()
+            )
+            await interaction.response.edit_message(embed=embed, view=confirmation_view)
+        else:
+            error_embed = discord.Embed(
+                title="❌ Не удалось купить динозавров",
+                description="Произошла ошибка при покупке динозавров.",
+                color=discord.Color.red()
+            )
+            await interaction.response.edit_message(embed=error_embed, view=self.shop_view)
 
 
 class DinoPurchaseConfirmationView(View):
@@ -223,53 +300,9 @@ class DinoShopView(View):
                 self.selected_price = DINOSAURS.get(self.selected_dino).get("price", 0)
             await self.update_view(interaction)
         elif custom_id == "buy_dino":
-            has_enough_tk = await DonationCRUD.check_balance(interaction.user.id, self.selected_price)
-            if not has_enough_tk:
-                error_embed = discord.Embed(
-                    title="❌ Недостаточно ТC",
-                    description=f"У вас недостаточно ТC для покупки {self.selected_dino}.\n"
-                                f"Требуется: {self.selected_price} ТК\n"
-                                f"Ваш баланс: {await DonationCRUD.get_tk(interaction.user.id)} ТC",
-                    color=discord.Color.red()
-                )
-                await interaction.response.edit_message(
-                    content=None,
-                    embed=error_embed,
-                    view=self
-                )
-                return False
             if self.selected_dino and self.selected_price is not None:
-                current_dino = DINOSAURS[self.selected_dino]
-                result = await buy_dino(
-                    interaction.user.id,
-                    current_dino["class_name"],
-                    99, 100, 100, 100
-                )
-                if isinstance(result, tuple) and result[0] is None:
-                    reason = result[1] if len(result) > 1 else "Неизвестная ошибка"
-                    error_embed = discord.Embed(
-                        title="❌ Не удалось купить динозавра",
-                        description=reason,
-                        color=discord.Color.red()
-                    )
-                    await interaction.response.edit_message(
-                        content=None,
-                        embed=error_embed,
-                        view=self
-                    )
-                else:
-                    await DonationCRUD.remove_tk(interaction.user.id, self.selected_price)
-                    confirmation_view = DinoPurchaseConfirmationView(self, self.main_menu_embed, self.main_menu_view)
-                    await interaction.response.edit_message(
-                        content=f"Вы купили динозавра **{self.selected_dino}** за **{self.selected_price} ТС**!",
-                        embed=dino_characteristics_embed(self.selected_dino),
-                        view=confirmation_view
-                    )
-            else:
-                await interaction.response.send_message(
-                    "Сначала выберите динозавра!",
-                    ephemeral=True
-                )
+                modal = PurchaseQuantityModal(self.selected_dino, self.selected_price, self)
+                await interaction.response.send_modal(modal)
         elif custom_id == "back_to_menu":
             await interaction.response.edit_message(embed=self.main_menu_embed, view=self.main_menu_view)
         elif custom_id == "close":
