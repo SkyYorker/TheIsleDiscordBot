@@ -83,6 +83,7 @@ class AuthView(View):
 
         steam_data = await self.get_steam_data(interaction.user.id)
         view = MainMenuView(steam_data, interaction.user.id)
+        await view.update_player_data(interaction.user.id)
         await interaction.response.send_message(embed=view.embed, view=view, ephemeral=True)
 
     @discord.ui.button(label="Привязать Steam", style=discord.ButtonStyle.green, custom_id="link_steam_button", row=1)

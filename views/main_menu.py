@@ -3,7 +3,7 @@ import os
 import discord
 from discord.ui import View, Button
 
-from database.crud import PlayerDinoCRUD, DonationCRUD
+from database.crud import PlayerDinoCRUD, DonationCRUD, SubscriptionCRUD
 from utils.rcon_isle import PlayerData
 from utils.scripts import get_all_dinos, get_current_dino, kill_current_dino
 from views.deposit_view import DepositView
@@ -28,6 +28,7 @@ class KillDinoResultView(View):
             custom_id="back_to_main_menu",
             row=0
         ))
+        self.subscribe = "Нет подписки"
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         custom_id = interaction.data.get("custom_id")
@@ -119,7 +120,10 @@ class MainMenuView(View):
     async def update_player_data(self, user_id: int):
         updated_data = await DonationCRUD.get_tk(user_id)
         if updated_data is not None and self.steam_data:
-            self.steam_data["tk"] = updated_data
+            self.tk = updated_data
+        sub = await SubscriptionCRUD.get_active_subscription(user_id)
+        if sub:
+            self.subscribe = sub.get("tier", "Нет подписки")
 
     @property
     def embed(self) -> discord.Embed:
@@ -132,7 +136,8 @@ class MainMenuView(View):
                 f"🌐 [Открыть профиль Steam](https://steamcommunity.com/profiles/{self.steam_data.get('steamid', '')})\n"
                 f"\n"
                 f"━━━━━━━━━━━━━━━━━━\n"
-                f"💎 **Количество ТС:** `{self.steam_data.get('tk', 'Неизвестно')}`\n"
+                f"💎 **Количество ТС:** `{self.tk}`\n"
+                f"🌟 **Подписка:** `{self.subscribe}`\n"
                 f"━━━━━━━━━━━━━━━━━━"
             ),
             color=discord.Color.green(),
