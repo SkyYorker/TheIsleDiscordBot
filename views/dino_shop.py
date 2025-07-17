@@ -81,7 +81,7 @@ class PurchaseQuantityModal(Modal):
             await interaction.response.edit_message(embed=error_embed, view=self.shop_view)
             return
 
-        checked_max_limit = await check_max_limit_dino(interaction.user.id)
+        checked_max_limit = await check_max_limit_dino(interaction.user.id, quantity)
         if isinstance(checked_max_limit, tuple):
             error_embed = discord.Embed(
                 title="❌ Недостаточно слотов",
