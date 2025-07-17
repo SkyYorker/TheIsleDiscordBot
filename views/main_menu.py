@@ -33,7 +33,7 @@ class KillDinoResultView(View):
         custom_id = interaction.data.get("custom_id")
         if custom_id == "back_to_main_menu":
             await self.main_menu_view.update_player_data(interaction.user.id)
-            await interaction.response.edit_message(embed=self.main_menu_embed.embed, view=self.main_menu_view)
+            await interaction.response.edit_message(embed=self.main_menu_view.embed, view=self.main_menu_view)
         return False
 
 
