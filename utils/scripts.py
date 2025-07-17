@@ -1,7 +1,7 @@
 import os
 from typing import Optional, Tuple, Union, List, Dict, Any
 
-from database.crud import PlayerDinoCRUD, PendingDinoCRUD
+from database.crud import PlayerDinoCRUD, PendingDinoCRUD, SubscriptionCRUD
 from .clicker_api import slay_dino, restore_dino
 from .rcon_isle import fetch_player_by_id, PlayerData, send_dm_message
 
@@ -91,6 +91,14 @@ async def pending_save_dino(discord_id: int, callback_url: str) -> Tuple[Optiona
     if not player:
         return None, steam_id
 
+    max_dino = 6
+    subscribe = await SubscriptionCRUD.get_active_subscription(discord_id)
+    if subscribe:
+        max_dino += subscribe.get("dino_slots", 0)
+
+    if len(player.get("dinos", [])) >= max_dino:
+        return None, "Превышено количество сохраняемых динозавров в слоты. Сперва удалите динозавров из слотов"
+
     isle_player, error = await _get_isle_player(steam_id)
     if error:
         return None, error
@@ -113,6 +121,14 @@ async def buy_dino(discord_id: int, dino_class: str, growth: int, hunger: int, t
     player, steam_id = await _get_player_data(discord_id)
     if not player:
         return None, steam_id
+
+    max_dino = 6
+    subscribe = await SubscriptionCRUD.get_active_subscription(discord_id)
+    if subscribe:
+        max_dino += subscribe.get("dino_slots", 0)
+
+    if len(player.get("dinos", [])) >= max_dino:
+        return None, "Превышено количество сохраняемых динозавров в слоты. Сперва удалите динозавров из слотов"
 
     result = await PlayerDinoCRUD.add_dino(steam_id, dino_class, growth, hunger, thirst, health)
     return result if result else (None, "Игрок не найден")
