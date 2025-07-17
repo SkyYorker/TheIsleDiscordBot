@@ -229,7 +229,6 @@ class DinosaurSelectView(View):
             await self.update_view(interaction)
         elif custom_id == "activate_dino":
             if self.selected_dino:
-                # TODO: Переделать процесс активации
                 wait_embed = discord.Embed(
                     title="⏳ Пожалуйста, подождите",
                     description="Происходит активация выбранного динозавра...\nЭто может занять несколько секунд.",
@@ -241,9 +240,15 @@ class DinosaurSelectView(View):
                 )
                 result = await restore_dino_script(interaction.user.id, self.selected_dino)
                 if result is True:
+                    saved_dino_class = "1"
+                    for dino in self.dinosaurs[:25]:
+                        dino_name = find_name_by_class(dino["dino_class"])
+                        if str(dino["id"]) == self.selected_dino:
+                            saved_dino_class = dino_name
+                            break
                     embed = discord.Embed(
                         title="✅ Успешная активация",
-                        description=f"Динозавр `{self.selected_dino}` успешно активирован!",
+                        description=f"Динозавр `{saved_dino_class}` ({self.selected_dino}) успешно активирован!",
                         color=discord.Color.green()
                     )
                 else:
