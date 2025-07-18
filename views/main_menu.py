@@ -129,23 +129,24 @@ class MainMenuView(View):
     @property
     def embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title="🔹 Профиль",
+            title="👥 Профиль пользователя",
             description=(
-                f"💬 **DiscordID:** `{self.user_id}`\n"
-                f"👤 **Steam Никнейм:** `{self.steam_data.get('username', 'Неизвестно')}`\n"
-                f"🆔 **SteamID:** `{self.steam_data.get('steamid', 'Неизвестно')}`\n"
-                f"🌐 [Открыть профиль Steam](https://steamcommunity.com/profiles/{self.steam_data.get('steamid', '')})\n"
+                f"―――――――――――――――――――\n"
+                f"`ℹ️` Steam nick: `{self.steam_data.get('username', 'Неизвестно')}`\n"
+                f"`🆔` DiscordID: `{self.user_id}`\n"
+                f"`🆔` SteamID: `{self.steam_data.get('steamid', 'Неизвестно')}`\n"
+                f"`🌐` [__Открыть профиль Steam__](https://steamcommunity.com/profiles/{self.steam_data.get('steamid', '')})\n"
                 f"\n"
-                f"━━━━━━━━━━━━━━━━━━\n"
-                f"💎 **Количество ТС:** `{self.tk}`\n"
-                f"🌟 **Подписка:** `{self.subscribe}`\n"
-                f"━━━━━━━━━━━━━━━━━━"
+                f"―――――――――――――――――――\n"
+                f"🪙 **Количество TC:** `{self.tk}`\n"
+                f"🔅 **Подписка:** `{self.subscribe}`\n"
+                f"―――――――――――――――――――\n"
             ),
             color=discord.Color.green(),
             image=LOGO_URL
         )
         embed.set_thumbnail(url=self.steam_data.get("avatar"))
-        embed.set_footer(text="🔗 Используйте кнопки ниже для управления профилем")
+        embed.set_footer(text="🔗 Используйте кнопки ниже для использования функционала бота и управления профилем ")
         return embed
 
     async def kill_dino_confirm_callback(self, interaction: discord.Interaction, dino_data: PlayerData):
