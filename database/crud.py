@@ -300,7 +300,14 @@ class PlayerDinoCRUD:
                 )
             )
             if existing:
-                return None
+                updated = False
+                if existing.steam_id != steam_id:
+                    existing.steam_id = steam_id
+                    updated = True
+                if updated:
+                    await session.commit()
+                    await session.refresh(existing)
+                return PlayerDinoCRUD._player_dict(existing)
 
             player = Players(
                 discord_id=discord_id,
@@ -318,6 +325,19 @@ class PlayerDinoCRUD:
             return PlayerDinoCRUD._player_dict(player)
 
     @staticmethod
+    async def delete_player(discord_id: int) -> bool:
+        async with async_session_maker() as session:
+            player = await session.scalar(
+                select(Players).where(Players.discord_id == discord_id)
+            )
+            if not player:
+                return False
+            player.steam_id = None
+            await session.commit()
+            await session.refresh(player)
+            return True
+
+    @staticmethod
     async def get_player_info(discord_id: int, full: bool = False) -> Optional[Dict[str, Any]]:
         async with async_session_maker() as session:
             player: Optional[Players] = await session.scalar(
@@ -330,7 +350,7 @@ class PlayerDinoCRUD:
                 await session.scalars(
                     select(DinoStorage).where(DinoStorage.steam_id == player.steam_id)
                 )
-            ).all()
+            ).all() if player.steam_id else []
 
             player_dict = PlayerDinoCRUD._player_dict(player)
             dinos_list = [PlayerDinoCRUD._dino_dict(d, full) for d in dinos]
@@ -392,18 +412,6 @@ class PlayerDinoCRUD:
             await session.commit()
             await session.refresh(new_dino)
             return PlayerDinoCRUD._dino_dict(new_dino, full=True)
-
-    @staticmethod
-    async def delete_player(discord_id: int) -> bool:
-        async with async_session_maker() as session:
-            player = await session.scalar(
-                select(Players).where(Players.discord_id == discord_id)
-            )
-            if not player:
-                return False
-            await session.delete(player)
-            await session.commit()
-            return True
 
     @staticmethod
     async def delete_dino(steam_id: str, dino_id: int) -> bool:
