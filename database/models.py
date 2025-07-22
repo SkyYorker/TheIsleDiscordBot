@@ -79,7 +79,7 @@ class Players(Base):
     __tablename__ = "players"
 
     discord_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    steam_id: Mapped[str] = mapped_column(Text, unique=True)
+    steam_id: Mapped[Optional[str]] = mapped_column(Text, unique=True, nullable=True)
     tk: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     registry_date: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.now(UTC), nullable=False
