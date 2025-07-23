@@ -2,8 +2,8 @@ from datetime import datetime, UTC, timedelta
 from enum import Enum, auto
 from typing import Optional
 
-from sqlalchemy import DateTime, Text, Integer, Boolean, Enum as SQLEnum, ForeignKey
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy import DateTime, Text, Integer, Boolean, Enum as SQLEnum
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
@@ -39,7 +39,7 @@ class Subscription(Base):
     __tablename__ = "subscriptions"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    player_id: Mapped[int] = mapped_column(ForeignKey("players.discord_id"), index=True)
+    steam_id: Mapped[str] = mapped_column(Text, index=True, nullable=False)
     tier: Mapped[SubscriptionTier] = mapped_column(SQLEnum(SubscriptionTier), nullable=False)
     dino_slots: Mapped[int] = mapped_column(Integer, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -51,12 +51,10 @@ class Subscription(Base):
         DateTime(timezone=True), nullable=False
     )
 
-    player: Mapped["Players"] = relationship(back_populates="subscriptions")
-
     @classmethod
     def create(
             cls,
-            player_id: int,
+            steam_id: str,
             tier: SubscriptionTier,
             duration_days: int = 30
     ) -> "Subscription":
@@ -65,7 +63,7 @@ class Subscription(Base):
 
         now = datetime.now(UTC)
         return cls(
-            player_id=player_id,
+            steam_id=steam_id,
             tier=tier,
             dino_slots=SUBSCRIPTION_CONFIG[tier]["dino_slots"],
             is_active=True,
@@ -84,24 +82,6 @@ class Players(Base):
     registry_date: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.now(UTC), nullable=False
     )
-
-    subscriptions: Mapped[list["Subscription"]] = relationship(
-        back_populates="player",
-        order_by="Subscription.purchase_date.desc()"
-    )
-
-    def get_active_subscription(self) -> Optional["Subscription"]:
-        now = datetime.now(UTC)
-        for sub in self.subscriptions:
-            if sub.is_active and sub.expiration_date > now:
-                return sub
-        return None
-
-    def get_total_dino_slots(self, base_slots: int = 5) -> int:
-        active_sub = self.get_active_subscription()
-        if active_sub:
-            return base_slots + active_sub.dino_slots
-        return base_slots
 
 
 class DinoStorage(Base):

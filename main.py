@@ -22,6 +22,7 @@ async def on_ready():
 bot.load_extension("cogs.dino_fast_commands_cog")
 bot.load_extension("cogs.main_menu_cog")
 bot.load_extension("cogs.admin_donate_cog")
+bot.load_extension("cogs.subscription_tasks_cog")
 
 asyncio.run(init_models())
 bot.run(os.getenv("DISCORD_TOKEN"))

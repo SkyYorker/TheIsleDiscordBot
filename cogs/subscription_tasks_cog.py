@@ -3,7 +3,7 @@ import logging
 from typing import Optional
 
 import discord
-from discord.ext import tasks
+from discord.ext import tasks, commands
 
 from database.crud import SubscriptionCRUD, DonationCRUD
 from database.models import SubscriptionTier, SUBSCRIPTION_CONFIG
@@ -22,7 +22,7 @@ logger = logging.getLogger("подписки")
 GUILD_ID = int(os.getenv("GUILD_ID"))
 
 
-class SubscriptionTasks:
+class SubscriptionTasks(commands.Cog):
     def __init__(self, bot: discord.Bot):
         self.bot = bot
         self.subscription_check.start()
@@ -64,10 +64,9 @@ class SubscriptionTasks:
         expired_subs = await SubscriptionCRUD.get_expired_subscriptions()
         logger.info(f"Обработка {len(expired_subs)} истекших подписок")
 
-        guild = self.bot.get_guild(GUILD_ID)
+        guild = await self.bot.fetch_guild(GUILD_ID)
         if not guild:
             logger.warning(f"Сервер {GUILD_ID} не найден")
-            return
 
         for sub in expired_subs:
             try:
@@ -118,3 +117,6 @@ class SubscriptionTasks:
         if user:
             await user.send(f"❌ Подписка **{sub['tier']}** истекла")
             logger.info(f"Уведомление об истечении отправлено пользователю {sub['player_id']}")
+
+def setup(bot):
+    bot.add_cog(SubscriptionTasks(bot))

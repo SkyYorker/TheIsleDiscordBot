@@ -14,16 +14,27 @@ async def init_models():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+async def get_steam_id_by_discord_id(discord_id: int) -> Optional[str]:
+    async with async_session_maker() as session:
+        result = await session.execute(
+            select(Players.steam_id).where(Players.discord_id == discord_id)
+        )
+        steam_id = result.scalar()
+        return steam_id
+
 
 class SubscriptionCRUD:
     @staticmethod
     async def get_active_subscription(discord_id: int) -> Optional[Dict[str, Any]]:
+        steam_id = await get_steam_id_by_discord_id(discord_id)
+        if not steam_id:
+            return None
         async with async_session_maker() as session:
             result = await session.execute(
                 select(Subscription)
-                .where(Subscription.player_id == discord_id)
+                .where(Subscription.steam_id == steam_id)
                 .where(Subscription.is_active == True)
-                .where(Subscription.expiration_date > datetime.now(UTC))
+                .where(Subscription.expiration_date > datetime.now())
                 .order_by(Subscription.expiration_date.desc())
             )
             sub = result.scalars().first()
@@ -43,9 +54,12 @@ class SubscriptionCRUD:
             duration_days: int = 30,
             auto_renewal: bool = True
     ) -> Dict[str, Any]:
+        steam_id = await get_steam_id_by_discord_id(discord_id)
+        if not steam_id:
+            raise ValueError("No steam_id for this discord_id")
         async with async_session_maker() as session:
             sub = Subscription.create(
-                player_id=discord_id,
+                steam_id=steam_id,
                 tier=tier,
                 duration_days=duration_days
             )
@@ -62,6 +76,7 @@ class SubscriptionCRUD:
                 "expiration_date": sub.expiration_date,
                 "auto_renewal": sub.auto_renewal
             }
+
 
     @staticmethod
     async def update_subscription(
@@ -117,8 +132,11 @@ class SubscriptionCRUD:
             discord_id: int,
             active_only: bool = False
     ) -> List[Dict[str, Any]]:
+        steam_id = await get_steam_id_by_discord_id(discord_id)
+        if not steam_id:
+            return []
         async with async_session_maker() as session:
-            query = select(Subscription).where(Subscription.player_id == discord_id)
+            query = select(Subscription).where(Subscription.steam_id == steam_id)
 
             if active_only:
                 query = query.where(
@@ -153,7 +171,7 @@ class SubscriptionCRUD:
                 return None
 
             sub.expiration_date = max(
-                datetime.now(UTC),
+                datetime.now(),
                 sub.expiration_date
             ) + timedelta(days=duration_days)
             sub.is_active = True
@@ -168,48 +186,82 @@ class SubscriptionCRUD:
             }
 
     @staticmethod
-    async def get_expiring_subscriptions(
-            hours_before: int = 24
-    ) -> List[Dict[str, Any]]:
+    async def get_expiring_subscriptions(days: int = 3) -> List[Dict[str, Any]]:
         async with async_session_maker() as session:
-            now = datetime.now(UTC)
-            expiration_threshold = now + timedelta(hours=hours_before)
-
-            result = await session.execute(
-                select(Subscription)
-                .where(Subscription.is_active == True)
-                .where(Subscription.expiration_date <= expiration_threshold)
-                .where(Subscription.expiration_date > now)
+            now = datetime.now()
+            expire_threshold = now + timedelta(days=days)
+            stmt = (
+                select(
+                    Subscription.id,
+                    Subscription.steam_id,
+                    Subscription.tier,
+                    Subscription.dino_slots,
+                    Subscription.is_active,
+                    Subscription.auto_renewal,
+                    Subscription.purchase_date,
+                    Subscription.expiration_date,
+                    Players.discord_id.label("player_id"),
+                )
+                .outerjoin(Players, Players.steam_id == Subscription.steam_id)
+                .where(
+                    Subscription.expiration_date <= expire_threshold,
+                    Subscription.expiration_date > now,
+                    Subscription.is_active == True,
+                )
             )
-            return [
-                {
-                    "id": sub.id,
-                    "player_id": sub.player_id,
-                    "tier": sub.tier.name,
-                    "auto_renewal": sub.auto_renewal,
-                    "expiration_date": sub.expiration_date
-                }
-                for sub in result.scalars()
-            ]
+            result = await session.execute(stmt)
+            subscriptions = []
+            for row in result.fetchall():
+                subscriptions.append({
+                    "id": row.id,
+                    "steam_id": row.steam_id,
+                    "tier": row.tier.name if row.tier else None,
+                    "dino_slots": row.dino_slots,
+                    "is_active": row.is_active,
+                    "auto_renewal": row.auto_renewal,
+                    "purchase_date": row.purchase_date,
+                    "expiration_date": row.expiration_date,
+                    "player_id": row.player_id,
+                })
+            return subscriptions
 
     @staticmethod
     async def get_expired_subscriptions() -> List[Dict[str, Any]]:
         async with async_session_maker() as session:
-            result = await session.execute(
-                select(Subscription)
-                .where(Subscription.is_active == True)
-                .where(Subscription.expiration_date <= datetime.now(UTC))
+            now = datetime.now()
+            stmt = (
+                select(
+                    Subscription.id,
+                    Subscription.steam_id,
+                    Subscription.tier,
+                    Subscription.dino_slots,
+                    Subscription.is_active,
+                    Subscription.auto_renewal,
+                    Subscription.purchase_date,
+                    Subscription.expiration_date,
+                    Players.discord_id.label("player_id"),
+                )
+                .outerjoin(Players, Players.steam_id == Subscription.steam_id)
+                .where(
+                    Subscription.expiration_date <= now,
+                    Subscription.is_active == True,
+                )
             )
-            return [
-                {
-                    "id": sub.id,
-                    "player_id": sub.player_id,
-                    "tier": sub.tier.name,
-                    "auto_renewal": sub.auto_renewal,
-                    "expiration_date": sub.expiration_date
-                }
-                for sub in result.scalars()
-            ]
+            result = await session.execute(stmt)
+            subscriptions = []
+            for row in result.fetchall():
+                subscriptions.append({
+                    "id": row.id,
+                    "steam_id": row.steam_id,
+                    "tier": row.tier.name if row.tier else None,
+                    "dino_slots": row.dino_slots,
+                    "is_active": row.is_active,
+                    "auto_renewal": row.auto_renewal,
+                    "purchase_date": row.purchase_date,
+                    "expiration_date": row.expiration_date,
+                    "player_id": row.player_id,
+                })
+            return subscriptions
 
     @staticmethod
     async def bulk_update_subscriptions(
