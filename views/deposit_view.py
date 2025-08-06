@@ -1,6 +1,7 @@
 import discord
 from discord.ui import View, Button, Modal, InputText
 
+from utils.steam_api import steam_api
 from utils.unitpay import UnitPayUrlGenerator
 
 
@@ -58,10 +59,15 @@ class DepositView(View):
             if custom_id == "retry_deposit":
                 await self.show_deposit_modal(interaction)
             elif custom_id == "back_to_main_menu":
-                await interaction.response.edit_message(
-                    embed=self.main_menu_embed,
-                    view=self.main_menu_view
-                )
+                from views.main_menu import MainMenuView
+                steam_data = await steam_api.get_steam_data(interaction.user.id)
+                view = MainMenuView(steam_data, interaction.user.id)
+                await view.update_player_data(interaction.user.id)
+                await interaction.response.send_message(embed=view.embed, view=view, ephemeral=True)
+                # await interaction.response.edit_message(
+                #     embed=self.main_menu_embed,
+                #     view=self.main_menu_view
+                # )
             return False
 
         error_view.interaction_check = error_interaction_check

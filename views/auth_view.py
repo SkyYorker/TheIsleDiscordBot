@@ -1,19 +1,16 @@
 import logging
-import os
 
 import discord
 from discord.ui import View, Button, Modal, InputText
 
 from database.crud import PlayerDinoCRUD
-from utils.steam_api import SteamAPI
+from utils.steam_api import steam_api
 from utils.steam_auth import SteamAuth
 from views.main_menu import MainMenuView
 
 # Настройка логирования для отладки
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-
-steam_api = SteamAPI(api_key=os.getenv("STEAM_API_KEY"))
 
 
 class SteamLinkModal(Modal):
@@ -81,7 +78,7 @@ class AuthView(View):
             await interaction.response.send_message(embed=embed, view=AuthView(), ephemeral=True)
             return
 
-        steam_data = await self.get_steam_data(interaction.user.id)
+        steam_data = await steam_api.get_steam_data(interaction.user.id)
         view = MainMenuView(steam_data, interaction.user.id)
         await view.update_player_data(interaction.user.id)
         await interaction.response.send_message(embed=view.embed, view=view, ephemeral=True)
@@ -131,7 +128,8 @@ class AuthView(View):
         steam_id = ""
         if isinstance(player, dict):
             steam_id = player.get("player", {}).get("steam_id")
-        logger.info(f"Проверка привязки Steam для пользователя {discord_id}: {'есть' if player and steam_id else 'нет'}")
+        logger.info(
+            f"Проверка привязки Steam для пользователя {discord_id}: {'есть' if player and steam_id else 'нет'}")
         return player is not None and steam_id
 
     async def get_steam_data(self, discord_id: int) -> dict:

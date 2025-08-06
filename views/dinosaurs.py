@@ -6,6 +6,7 @@ from discord.ui import View, Select, Button
 
 from data.dinosaurus import find_name_by_class, DINOSAURS, CATEGORY_EMOJIS
 from utils.scripts import restore_dino_script, del_dino
+from utils.steam_api import steam_api
 
 
 def filter_dinos_by_category(dinos: List[Dict[str, Any]], category: str) -> List[Dict[str, Any]]:
@@ -195,7 +196,8 @@ class DinosaurSelectView(View):
             embed.set_footer(
                 text="⚠️ Следуйте правилам для успешной активации динозавра"
             )
-            embed.set_thumbnail(url="https://media.discordapp.net/attachments/1376971745621315726/1395558665527889941/6c996e2d-7785-4323-9279-69daf9442cf4.png?ex=687ae2ca&is=6879914a&hm=c4415e3d03cf016bcb96cf3f4a569530d545247896084eecf6b69ee19c45725c&=&format=webp&quality=lossless&width=810&height=810")
+            embed.set_thumbnail(
+                url="https://media.discordapp.net/attachments/1376971745621315726/1395558665527889941/6c996e2d-7785-4323-9279-69daf9442cf4.png?ex=687ae2ca&is=6879914a&hm=c4415e3d03cf016bcb96cf3f4a569530d545247896084eecf6b69ee19c45725c&=&format=webp&quality=lossless&width=810&height=810")
             return embed
 
     async def update_view(self, interaction: discord.Interaction):
@@ -216,7 +218,12 @@ class DinosaurSelectView(View):
             self.build_dino_select(category)
             await interaction.response.edit_message(embed=self.embed, view=self)
         elif custom_id == "go_main_menu":
-            await interaction.response.edit_message(embed=self.original_embed, view=self.original_view)
+            from views.main_menu import MainMenuView
+            steam_data = await steam_api.get_steam_data(interaction.user.id)
+            view = MainMenuView(steam_data, interaction.user.id)
+            await view.update_player_data(interaction.user.id)
+            await interaction.response.send_message(embed=view.embed, view=view, ephemeral=True)
+            # await interaction.response.edit_message(embed=self.original_embed, view=self.original_view)
         elif custom_id == "go_back":
             self.selected_category = None
             self.selected_dino = None

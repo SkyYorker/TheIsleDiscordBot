@@ -1,7 +1,10 @@
 import asyncio
 import logging
+import os
 
 import aiohttp
+
+from database.crud import PlayerDinoCRUD
 
 logging.basicConfig(
     level=logging.INFO,
@@ -83,3 +86,24 @@ class SteamAPI:
         logger.debug(f"Avatar URL for SteamID {steam_id}: {avatar_url}")
         self._avatar_url_cache[cache_key] = avatar_url
         return avatar_url
+
+    async def get_steam_data(self, discord_id: int) -> dict:
+        player = await PlayerDinoCRUD.get_player_info(discord_id)
+        if not player:
+            return {}
+        player = player["player"]
+        steam_id = player["steam_id"]
+        if not steam_id:
+            return {}
+        steam_info = await self.get_player_info(steam_id)
+        if not steam_info or not steam_info.get("personaname") or steam_info.get("error"):
+            return {}
+        return {
+            "username": steam_info.get("personaname", "Unknown"),
+            "avatar": steam_info.get("avatarfull", ""),
+            "steamid": steam_id,
+            "tk": player["tk"]
+        }
+
+
+steam_api = SteamAPI(api_key=os.getenv("STEAM_API_KEY"))

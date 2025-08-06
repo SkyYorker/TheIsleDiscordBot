@@ -3,10 +3,12 @@ from discord.ui import View, Button
 
 from data.dinosaurus import find_name_by_class, DINOSAURS
 from utils.rcon_isle import PlayerData
+from utils.steam_api import steam_api
 
 
 class KillDinoConfirmView(View):
-    def __init__(self, dino_data: PlayerData, main_menu_embed: discord.Embed, main_menu_view: View, on_confirm_callback):
+    def __init__(self, dino_data: PlayerData, main_menu_embed: discord.Embed, main_menu_view: View,
+                 on_confirm_callback):
         super().__init__(timeout=None)
         self.dino_data = dino_data
         self.main_menu_embed = main_menu_embed
@@ -33,7 +35,12 @@ class KillDinoConfirmView(View):
         if custom_id == "confirm_kill":
             await self.on_confirm_callback(interaction, self.dino_data)
         elif custom_id == "back_to_main_menu":
-            await interaction.response.edit_message(embed=self.main_menu_embed, view=self.main_menu_view)
+            steam_data = await steam_api.get_steam_data(interaction.user.id)
+            from views.main_menu import MainMenuView
+            view = MainMenuView(steam_data, interaction.user.id)
+            await view.update_player_data(interaction.user.id)
+            await interaction.response.send_message(embed=view.embed, view=view, ephemeral=True)
+            # await interaction.response.edit_message(embed=self.main_menu_embed, view=self.main_menu_view)
         return False
 
 

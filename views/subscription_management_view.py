@@ -6,6 +6,7 @@ from discord.ui import View, Button
 
 from database.crud import SubscriptionCRUD, DonationCRUD
 from database.models import SubscriptionTier, SUBSCRIPTION_CONFIG
+from utils.steam_api import steam_api
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,12 @@ class SubscriptionManagementView(View):
         custom_id = interaction.data.get("custom_id")
 
         if custom_id == "back_to_main":
-            await interaction.response.edit_message(embed=self.main_menu_embed, view=self.main_menu_view)
+            from views.main_menu import MainMenuView
+            steam_data = await steam_api.get_steam_data(interaction.user.id)
+            view = MainMenuView(steam_data, interaction.user.id)
+            await view.update_player_data(interaction.user.id)
+            await interaction.response.send_message(embed=view.embed, view=view, ephemeral=True)
+            # await interaction.response.edit_message(embed=self.main_menu_embed, view=self.main_menu_view)
             return True
 
         if custom_id == "toggle_auto_renew":
@@ -219,8 +225,13 @@ class SubscriptionConfirmView(View):
             return True
 
         if custom_id == "back_to_main":
-            await self.main_menu_view.update_player_data(interaction.user.id)
-            await interaction.response.edit_message(embed=self.main_menu_view.embed, view=self.main_menu_view)
+            from views.main_menu import MainMenuView
+            steam_data = await steam_api.get_steam_data(interaction.user.id)
+            view = MainMenuView(steam_data, interaction.user.id)
+            await view.update_player_data(interaction.user.id)
+            await interaction.response.send_message(embed=view.embed, view=view, ephemeral=True)
+            # await self.main_menu_view.update_player_data(interaction.user.id)
+            # await interaction.response.edit_message(embed=self.main_menu_view.embed, view=self.main_menu_view)
             return True
 
         if custom_id == "confirm_purchase":

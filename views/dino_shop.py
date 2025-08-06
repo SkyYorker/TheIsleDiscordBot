@@ -6,6 +6,7 @@ from discord.ui import View, Select, Button, Modal, InputText
 from data.dinosaurus import DINOSAURS, CATEGORY_EMOJIS, find_name_by_class
 from database.crud import DonationCRUD
 from utils.scripts import buy_dino, check_max_limit_dino
+from utils.steam_api import steam_api
 
 
 def get_dinos_by_category(category: str) -> List[tuple[str, int]]:
@@ -161,8 +162,13 @@ class DinoPurchaseConfirmationView(View):
                                                     embed=self.shop_view.embed,
                                                     view=self.shop_view)
         elif custom_id == "back_to_menu":
-            await self.main_menu_view.update_player_data(interaction.user.id)
-            await interaction.response.edit_message(embed=self.main_menu_view.embed, view=self.main_menu_view)
+            from views.main_menu import MainMenuView
+            steam_data = await steam_api.get_steam_data(interaction.user.id)
+            view = MainMenuView(steam_data, interaction.user.id)
+            await view.update_player_data(interaction.user.id)
+            await interaction.response.send_message(embed=view.embed, view=view, ephemeral=True)
+            # await self.main_menu_view.update_player_data(interaction.user.id)
+            # await interaction.response.edit_message(embed=self.main_menu_view.embed, view=self.main_menu_view)
         elif custom_id == "close":
             await interaction.response.defer()
             await interaction.delete_original_response()
@@ -284,7 +290,8 @@ class DinoShopView(View):
                 embed.add_field(name="Скорость бега", value=details["speed"], inline=False)
                 embed.add_field(name="Сила укуса", value=details["bite"], inline=False)
                 embed.set_image(url=details["image"])
-        embed.set_footer(text="💡Сначала выберите категорию динозавра, только потом станет доступен список покупаемых в шопе динозавров")
+        embed.set_footer(
+            text="💡Сначала выберите категорию динозавра, только потом станет доступен список покупаемых в шопе динозавров")
         embed.set_thumbnail(url="https://emojicdn.elk.sh/🦖")
         return embed
 
@@ -316,7 +323,12 @@ class DinoShopView(View):
                 modal = PurchaseQuantityModal(self.selected_dino, self.selected_price, self)
                 await interaction.response.send_modal(modal)
         elif custom_id == "back_to_menu":
-            await interaction.response.edit_message(embed=self.main_menu_embed, view=self.main_menu_view)
+            from views.main_menu import MainMenuView
+            steam_data = await steam_api.get_steam_data(interaction.user.id)
+            view = MainMenuView(steam_data, interaction.user.id)
+            await view.update_player_data(interaction.user.id)
+            await interaction.response.send_message(embed=view.embed, view=view, ephemeral=True)
+            # await interaction.response.edit_message(embed=self.main_menu_embed, view=self.main_menu_view)
         elif custom_id == "close":
             await interaction.response.defer()
             await interaction.delete_original_response()

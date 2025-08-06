@@ -6,6 +6,7 @@ from discord.ui import View, Button
 from database.crud import PlayerDinoCRUD, DonationCRUD, SubscriptionCRUD
 from utils.rcon_isle import PlayerData
 from utils.scripts import get_all_dinos, get_current_dino, kill_current_dino
+from utils.steam_api import steam_api
 from views.deposit_view import DepositView
 from views.dino_shop import DinoShopView
 from views.dinosaurs import DinosaurSelectView, DinosaurDeleteSelectView
@@ -32,8 +33,12 @@ class KillDinoResultView(View):
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         custom_id = interaction.data.get("custom_id")
         if custom_id == "back_to_main_menu":
-            await self.main_menu_view.update_player_data(interaction.user.id)
-            await interaction.response.edit_message(embed=self.main_menu_view.embed, view=self.main_menu_view)
+            steam_data = await steam_api.get_steam_data(interaction.user.id)
+            view = MainMenuView(steam_data, interaction.user.id)
+            await view.update_player_data(interaction.user.id)
+            await interaction.response.send_message(embed=view.embed, view=view, ephemeral=True)
+            # await self.main_menu_view.update_player_data(interaction.user.id)
+            # await interaction.response.edit_message(embed=self.main_menu_view.embed, view=self.main_menu_view)
         return False
 
 
@@ -235,7 +240,11 @@ class MainMenuView(View):
                 async def error_interaction_check(interaction: discord.Interaction) -> bool:
                     custom_id = interaction.data.get("custom_id")
                     if custom_id == "back_to_main_menu":
-                        await interaction.response.edit_message(embed=self.embed, view=self)
+                        steam_data = await steam_api.get_steam_data(interaction.user.id)
+                        view = MainMenuView(steam_data, interaction.user.id)
+                        await view.update_player_data(interaction.user.id)
+                        await interaction.response.send_message(embed=view.embed, view=view, ephemeral=True)
+                        # await interaction.response.edit_message(embed=self.embed, view=self)
                     elif custom_id == "close":
                         await interaction.response.defer()
                         await interaction.delete_original_response()
