@@ -69,3 +69,22 @@ async def set_nutrients(
                 auth=BasicAuth(USERNAME, PASSWORD)
         ) as response:
             return await response.json()
+
+
+async def set_food(
+        steamid: str,
+        hunger: int,
+        thirst: int
+):
+    data = {
+        "steamid": steamid,
+        "thirst": thirst,
+        "hunger": hunger
+    }
+    async with ClientSession() as session:
+        async with session.post(
+                f"http://{API_URL}/run-set-food",
+                json=data,
+                auth=BasicAuth(USERNAME, PASSWORD)
+        ) as response:
+            return await response.json()

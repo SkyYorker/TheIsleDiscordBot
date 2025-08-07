@@ -39,7 +39,7 @@ class KillDinoConfirmView(View):
             from views.main_menu import MainMenuView
             view = MainMenuView(steam_data, interaction.user.id)
             await view.update_player_data(interaction.user.id)
-            await interaction.response.send_message(embed=view.embed, view=view, ephemeral=True)
+            await interaction.response.edit_message(embed=view.embed, view=view, content=None)
             # await interaction.response.edit_message(embed=self.main_menu_embed, view=self.main_menu_view)
         return False
 

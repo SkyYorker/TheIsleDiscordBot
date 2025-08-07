@@ -109,7 +109,7 @@ class SubscriptionManagementView(View):
             steam_data = await steam_api.get_steam_data(interaction.user.id)
             view = MainMenuView(steam_data, interaction.user.id)
             await view.update_player_data(interaction.user.id)
-            await interaction.response.send_message(embed=view.embed, view=view, ephemeral=True)
+            await interaction.response.edit_message(embed=view.embed, view=view, content=None)
             # await interaction.response.edit_message(embed=self.main_menu_embed, view=self.main_menu_view)
             return True
 
@@ -229,7 +229,7 @@ class SubscriptionConfirmView(View):
             steam_data = await steam_api.get_steam_data(interaction.user.id)
             view = MainMenuView(steam_data, interaction.user.id)
             await view.update_player_data(interaction.user.id)
-            await interaction.response.send_message(embed=view.embed, view=view, ephemeral=True)
+            await interaction.response.edit_message(embed=view.embed, view=view, content=None)
             # await self.main_menu_view.update_player_data(interaction.user.id)
             # await interaction.response.edit_message(embed=self.main_menu_view.embed, view=self.main_menu_view)
             return True

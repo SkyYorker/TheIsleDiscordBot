@@ -222,7 +222,7 @@ class DinosaurSelectView(View):
             steam_data = await steam_api.get_steam_data(interaction.user.id)
             view = MainMenuView(steam_data, interaction.user.id)
             await view.update_player_data(interaction.user.id)
-            await interaction.response.send_message(embed=view.embed, view=view, ephemeral=True)
+            await interaction.response.edit_message(embed=view.embed, view=view, content=None)
             # await interaction.response.edit_message(embed=self.original_embed, view=self.original_view)
         elif custom_id == "go_back":
             self.selected_category = None

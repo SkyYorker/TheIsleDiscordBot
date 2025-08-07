@@ -166,7 +166,7 @@ class DinoPurchaseConfirmationView(View):
             steam_data = await steam_api.get_steam_data(interaction.user.id)
             view = MainMenuView(steam_data, interaction.user.id)
             await view.update_player_data(interaction.user.id)
-            await interaction.response.send_message(embed=view.embed, view=view, ephemeral=True)
+            await interaction.response.edit_message(embed=view.embed, view=view, content=None)
             # await self.main_menu_view.update_player_data(interaction.user.id)
             # await interaction.response.edit_message(embed=self.main_menu_view.embed, view=self.main_menu_view)
         elif custom_id == "close":
@@ -219,15 +219,17 @@ class DinoShopView(View):
             f"Выбрана категория: {self.selected_category}"
             if self.selected_category else "Выберите категорию"
         )
-        return Select(
-            placeholder=placeholder,
-            options=[
+        options = [
                 discord.SelectOption(
                     label=f"{cat}",
                     value=cat,
                     emoji=CATEGORY_EMOJIS[cat]
                 ) for cat in sorted(categories)
-            ],
+            ]
+        options.append(discord.SelectOption(label="Услуги", value="other_services"))
+        return Select(
+            placeholder=placeholder,
+            options=options,
             custom_id="select_category",
             row=0
         )
@@ -309,6 +311,16 @@ class DinoShopView(View):
         custom_id = interaction.data.get("custom_id")
         if custom_id == "select_category":
             self.selected_category = interaction.data["values"][0]
+            if self.selected_category == "other_services":
+                from views.nutrients_view import OtherServicesView
+                services_view = OtherServicesView(self)
+                services_embed = discord.Embed(
+                    title="🛠 Дополнительные услуги",
+                    description="Выберите нужную услугу:",
+                    color=discord.Color.blue()
+                )
+                await interaction.response.edit_message(embed=services_embed, view=services_view)
+                return False
             self.selected_dino = None
             self.selected_price = None
             await self.update_view(interaction)
@@ -327,7 +339,7 @@ class DinoShopView(View):
             steam_data = await steam_api.get_steam_data(interaction.user.id)
             view = MainMenuView(steam_data, interaction.user.id)
             await view.update_player_data(interaction.user.id)
-            await interaction.response.send_message(embed=view.embed, view=view, ephemeral=True)
+            await interaction.response.edit_message(embed=view.embed, view=view, content=None)
             # await interaction.response.edit_message(embed=self.main_menu_embed, view=self.main_menu_view)
         elif custom_id == "close":
             await interaction.response.defer()

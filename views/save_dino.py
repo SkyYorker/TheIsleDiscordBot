@@ -99,8 +99,9 @@ class SaveDinoView(View):
                     description=reason,
                     color=discord.Color.red()
                 )
-                await interaction.followup.edit_message(
-                    interaction.message.id,
+                # await interaction.followup.edit_message(
+                #     interaction.message.id,
+                await interaction.response.edit_message(
                     embed=embed,
                     view=None,
                     content=None
