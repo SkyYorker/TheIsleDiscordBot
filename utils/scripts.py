@@ -58,7 +58,7 @@ async def get_pending_dino(steam_id: str) -> Union[Dict[str, Any], Tuple[None, s
     return pending_dinos[0]
 
 
-async def save_dino_to_db(steam_id: str, dino_class: str, growth: float) -> Tuple[
+async def save_dino_to_db(steam_id: str, dino_class: str, growth: int) -> Tuple[
     Optional[Dict[str, Any]], Optional[str]]:
     current_dino = await get_pending_dino(steam_id)
     if isinstance(current_dino, tuple):
@@ -70,7 +70,7 @@ async def save_dino_to_db(steam_id: str, dino_class: str, growth: float) -> Tupl
     result = await PlayerDinoCRUD.add_dino(
         steam_id,
         current_dino["dino_class"],
-        min(int(current_dino["growth"]), 99),
+        min(growth, 99),
         int(current_dino["thirst"]),
         int(current_dino["hunger"]),
         int(current_dino["health"])

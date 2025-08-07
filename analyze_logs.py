@@ -80,7 +80,7 @@ def parse_log_line(line):
 
     steamid = steamid_match.group(1) if steamid_match else None
     dino_type = dino_match.group(1) if dino_match else None
-    growth = float(growth_match.group(1)) if growth_match else None
+    growth = int(100 / 0.75 * float(growth_match.group(1)) if growth_match else None
 
     return steamid, dino_type, growth
 
@@ -98,7 +98,7 @@ async def del_dino_saves(steamid: str):
         else:
             logger.debug(f"Файла {filename} не существует")
 
-async def save_dino(steamid, dino_type, growth):
+async def save_dino(steamid, dino_type, growth: int):
     try:
         dino = await get_pending_dino(steamid)
     except Exception as e:
@@ -125,7 +125,7 @@ async def save_dino(steamid, dino_type, growth):
     return dino, result, None
 
 
-def make_saved_dino_embed(dino_type, growth):
+def make_saved_dino_embed(dino_type, growth: int):
     return {
         "title": "Динозавр сохранен!",
         "description": f"Ваш динозавр **{dino_type}** был успешно сохранен.",
@@ -138,7 +138,7 @@ def make_saved_dino_embed(dino_type, growth):
             },
             {
                 "name": "Рост",
-                "value": f"{growth * 100:.3f}%",
+                "value": f"{growth}%",
                 "inline": True
             }
         ],
@@ -148,7 +148,7 @@ def make_saved_dino_embed(dino_type, growth):
     }
 
 
-async def send_dino_saved_embeds(bot_token, dino, dino_type, growth):
+async def send_dino_saved_embeds(bot_token, dino, dino_type, growth: int):
     embed = make_saved_dino_embed(dino_type, growth)
     try:
         await edit_ephemeral_message(

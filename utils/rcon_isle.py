@@ -57,7 +57,7 @@ def parse_player_data(response: str) -> List[PlayerData]:
             m = re.search(rf"{field}: ([\d\.]+)", block)
             return float(m.group(1)) if m else None
 
-        growth = extract_float("Growth")
+        growth = 100 / 0.75 * extract_float("Growth") / 100
         health = extract_float("Health")
         stamina = extract_float("Stamina")
         hunger = extract_float("Hunger")
