@@ -226,7 +226,7 @@ class DinoShopView(View):
                     emoji=CATEGORY_EMOJIS[cat]
                 ) for cat in sorted(categories)
             ]
-        options.append(discord.SelectOption(label="Услуги", value="other_services"))
+        options.append(discord.SelectOption(label="Услуги", value="other_services", emoji="💠"))
         return Select(
             placeholder=placeholder,
             options=options,
