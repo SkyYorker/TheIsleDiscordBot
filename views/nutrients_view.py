@@ -108,7 +108,7 @@ class OtherServicesView(View):
             steam_data = await steam_api.get_steam_data(interaction.user.id)
             view = MainMenuView(steam_data, interaction.user.id)
             await view.update_player_data(interaction.user.id)
-            await interaction.response.edit_message(embed=view.embed, view=view, content=None)
+            await interaction.followup.edit_message(interaction.message.id, embed=view.embed, view=view, content=None)
 
         return False
 
