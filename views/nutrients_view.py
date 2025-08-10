@@ -94,7 +94,7 @@ class OtherServicesView(View):
             result = await self.process_with_tk(interaction, handler["tk_cost"])
 
             if not result:
-                await self._send_error(interaction, handler["error_msg"], result)
+                # await self._send_error(interaction, handler["error_msg"], result)
                 return
 
             embed = discord.Embed(
