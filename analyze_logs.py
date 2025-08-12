@@ -2,7 +2,6 @@ import asyncio
 import logging
 import os
 import re
-import time
 
 from dotenv import load_dotenv
 
@@ -13,6 +12,29 @@ from watchdog.observers import Observer
 
 from utils.discord_api import edit_ephemeral_message, send_dm
 from utils.scripts import save_dino_to_db, get_pending_dino, del_pending_dino_by_steamid
+
+import time
+from functools import wraps
+
+
+def retry_on_access_error(max_retries=5, delay=0.1):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            retries = 0
+            while retries < max_retries:
+                try:
+                    return func(*args, **kwargs)
+                except (PermissionError, IOError) as e:
+                    retries += 1
+                    if retries >= max_retries:
+                        raise
+                    time.sleep(delay * (2 ** retries))  # Экспоненциальная задержка
+
+        return wrapper
+
+    return decorator
+
 
 BOT_TOKEN = os.getenv("DISCORD_TOKEN")
 LOG_FOLDER = os.getenv("LOG_FOLDER")
@@ -33,14 +55,52 @@ class LogFileHandler(FileSystemEventHandler):
         self._update_position()
         self.last_size = self._get_file_size()
         self.loop = loop
+        self._lock = asyncio.Lock()
 
     def _get_file_size(self):
-        return os.path.getsize(self.file_path)
+        try:
+            return os.path.getsize(self.file_path)
+        except FileNotFoundError:
+            logger.warning(f"Файл {self.file_path} не найден")
+            return 0
+        except Exception as e:
+            logger.error(f"Ошибка при получении размера файла: {e}")
+            return 0
 
+    @retry_on_access_error(max_retries=5, delay=0.1)
     def _update_position(self):
-        with open(self.file_path, "r", encoding="utf-8") as f:
-            f.seek(0, 2)
-            self.position = f.tell()
+        try:
+            with open(self.file_path, "r", encoding="utf-8") as f:
+                f.seek(0, 2)
+                self.position = f.tell()
+        except Exception as e:
+            logger.error(f"Ошибка при обновлении позиции: {e}")
+            raise
+
+    @retry_on_access_error(max_retries=5, delay=0.1)
+    def _read_new_lines(self):
+        lines = []
+        try:
+            with open(self.file_path, "r", encoding="utf-8") as f:
+                f.seek(self.position)
+                while True:
+                    line = f.readline()
+                    if not line:
+                        break
+                    lines.append(line.strip())
+                self.position = f.tell()
+        except Exception as e:
+            logger.error(f"Ошибка при чтении файла: {e}")
+            raise
+        return lines
+
+    async def _process_lines_safely(self, lines):
+        async with self._lock:
+            for line in lines:
+                try:
+                    await self.callback(line)
+                except Exception as e:
+                    logger.error(f"Ошибка при обработке строки: {e}", exc_info=True)
 
     def on_modified(self, event):
         if event.src_path != self.file_path:
@@ -55,34 +115,29 @@ class LogFileHandler(FileSystemEventHandler):
 
             self.last_size = current_size
 
-            with open(self.file_path, "r", encoding="utf-8") as f:
-                f.seek(self.position)
-                while True:
-                    line = f.readline()
-                    if not line:
-                        break
-                    asyncio.run_coroutine_threadsafe(self.callback(line.strip()), self.loop)
-                self.position = f.tell()
-        except PermissionError as e:
-            logger.error(f"Доступ к файлу запрещен: {e}")
-            time.sleep(1)
+            lines = self._read_new_lines()
+            if lines:
+                asyncio.run_coroutine_threadsafe(
+                    self._process_lines_safely(lines),
+                    self.loop
+                )
         except Exception as e:
-            logger.error(f"Неизвестная ошибка при чтении файла: {e}")
+            logger.error(f"Критическая ошибка при обработке изменений: {e}")
 
 
 def parse_log_line(line):
     if "Left The Server whilebeing safelogged" not in line:
         return None, None, None
 
-    steamid_match = re.search(r"\[(\d{17})\]", line)
-    dino_match = re.search(r"Was playing as: ([^,]+)", line)
-    growth_match = re.search(r"Growth: ([\d.]+)", line)
+    try:
+        steamid = re.search(r"\[(\d{17})\]", line).group(1)
+        dino_type = re.search(r"Was playing as: ([^,]+)", line).group(1)
+        growth = int(100 / 0.75 * float(re.search(r"Growth: ([\d.]+)", line).group(1)))
+        return steamid, dino_type, growth
+    except (AttributeError, ValueError, TypeError) as e:
+        logger.error(f"Ошибка парсинга строки: {line[:100]}... - {e}")
+        return None, None, None
 
-    steamid = steamid_match.group(1) if steamid_match else None
-    dino_type = dino_match.group(1) if dino_match else None
-    growth = int(100 / 0.75 * float(growth_match.group(1)) if growth_match else None
-
-    return steamid, dino_type, growth
 
 async def del_dino_saves(steamid: str):
     await asyncio.sleep(3)
@@ -97,6 +152,7 @@ async def del_dino_saves(steamid: str):
                 logger.error(f"Ошибка при удалении сохранения {filename} : {e}")
         else:
             logger.debug(f"Файла {filename} не существует")
+
 
 async def save_dino(steamid, dino_type, growth: int):
     try:
