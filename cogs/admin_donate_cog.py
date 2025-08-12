@@ -14,6 +14,7 @@ class AdminDonateCog(commands.Cog):
         description="Выдать ТС пользователю"
     )
     @commands.has_permissions(administrator=True)
+    @commands.guild_only
     async def give_tk(
             self,
             ctx: discord.ApplicationContext,
@@ -36,6 +37,7 @@ class AdminDonateCog(commands.Cog):
         description="Отобрать ТС у пользователя"
     )
     @commands.has_permissions(administrator=True)
+    @commands.guild_only
     async def take_tk(
             self,
             ctx: discord.ApplicationContext,
