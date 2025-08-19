@@ -85,16 +85,18 @@ class OtherServicesView(View):
 
         if custom_id in self.handlers:
             handler = self.handlers[custom_id]
-            result = await handler["action"](interaction.user.id)
-
-            if not result:
-                await self._send_error(interaction, handler["error_msg"], result)
-                return
 
             result = await self.process_with_tk(interaction, handler["tk_cost"])
 
             if not result:
                 # await self._send_error(interaction, handler["error_msg"], result)
+                return
+
+            result = await handler["action"](interaction.user.id)
+
+            if not result:
+                await DonationCRUD.add_tk(interaction.user.id, handler["tk_cost"])
+                await self._send_error(interaction, handler["error_msg"], result)
                 return
 
             embed = discord.Embed(
